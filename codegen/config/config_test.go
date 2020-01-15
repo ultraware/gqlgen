@@ -6,6 +6,8 @@ import (
 	"runtime"
 	"testing"
 
+	"github.com/99designs/gqlgen/internal/code"
+
 	"github.com/vektah/gqlparser"
 	"github.com/vektah/gqlparser/ast"
 
@@ -100,7 +102,7 @@ func TestReferencedPackages(t *testing.T) {
 
 		pkgs := tm.ReferencedPackages()
 
-		assert.Equal(t, []string{"github.com/test", "github.com/otherpkg"}, pkgs)
+		assert.Equal(t, []string{"github.com/test", "github.com/otherpkg", "github.com/99designs/gqlgen/graphql"}, pkgs)
 	})
 
 }
@@ -125,10 +127,11 @@ func TestAutobinding(t *testing.T) {
 			"github.com/99designs/gqlgen/example/chat",
 			"github.com/99designs/gqlgen/example/scalars/model",
 		},
+		Packages: &code.Packages{},
 	}
 
 	s := gqlparser.MustLoadSchema(&ast.Source{Name: "TestAutobinding.schema", Input: `
-		scalar Banned 
+		scalar Banned
 		type Message { id: ID }
 	`})
 

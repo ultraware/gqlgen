@@ -10,8 +10,6 @@ import (
 	"sort"
 	"strings"
 
-	"golang.org/x/tools/go/packages"
-
 	"github.com/99designs/gqlgen/internal/code"
 	"github.com/pkg/errors"
 	"github.com/vektah/gqlparser"
@@ -32,6 +30,7 @@ type Config struct {
 	SkipValidation           bool                       `yaml:"skip_validation,omitempty"`
 	Federated                bool                       `yaml:"federated,omitempty"`
 	AdditionalSources        []*ast.Source              `yaml:"-"`
+	Packages                 *code.Packages             `yaml:"-"`
 }
 
 var cfgFilenames = []string{".gqlgen.yml", "gqlgen.yml", "gqlgen.yaml"}
@@ -268,7 +267,14 @@ func (c *Config) Check() error {
 		pkgConfigsByDir[current.Dir()] = current
 	}
 
-	return c.normalize()
+	err := c.normalize()
+	if err != nil {
+		return err
+	}
+
+	c.Packages = &code.Packages{}
+	c.Packages.LoadAll(append(c.Models.ReferencedPackages(), c.AutoBind...)...)
+	return nil
 }
 
 func stripPath(path string) string {
@@ -299,7 +305,7 @@ func (tm TypeMap) Check() error {
 }
 
 func (tm TypeMap) ReferencedPackages() []string {
-	var pkgs []string
+	pkgs := []string{"github.com/99designs/gqlgen/graphql"}
 
 	for _, typ := range tm {
 		for _, model := range typ.Model {
@@ -401,17 +407,7 @@ func (c *Config) Autobind(s *ast.Schema) error {
 		return nil
 	}
 
-	ps, err := packages.Load(&packages.Config{
-		Mode: packages.NeedName |
-			packages.NeedFiles |
-			packages.NeedCompiledGoFiles |
-			packages.NeedImports |
-			packages.NeedTypes |
-			packages.NeedTypesSizes,
-	}, c.AutoBind...)
-	if err != nil {
-		return err
-	}
+	ps := c.Packages.LoadAll(c.AutoBind...)
 
 	for _, t := range s.Types {
 		if c.Models.UserDefined(t.Name) {

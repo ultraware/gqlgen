@@ -11,7 +11,6 @@ import (
 	"github.com/99designs/gqlgen/plugin/resolvergen"
 	"github.com/99designs/gqlgen/plugin/schemaconfig"
 	"github.com/pkg/errors"
-	"golang.org/x/tools/go/packages"
 )
 
 func Generate(cfg *config.Config, option ...Option) error {
@@ -95,17 +94,11 @@ func validate(cfg *config.Config) error {
 	if cfg.Resolver.IsDefined() {
 		roots = append(roots, cfg.Resolver.ImportPath())
 	}
-	_, err := packages.Load(&packages.Config{
-		Mode: packages.NeedName |
-			packages.NeedFiles |
-			packages.NeedCompiledGoFiles |
-			packages.NeedImports |
-			packages.NeedTypes |
-			packages.NeedTypesSizes |
-			packages.NeedSyntax |
-			packages.NeedTypesInfo}, roots...)
-	if err != nil {
-		return errors.Wrap(err, "validation failed")
+
+	cfg.Packages.LoadAll(roots...)
+	errs := cfg.Packages.Errors()
+	if len(errs) > 0 {
+		return errs
 	}
 	return nil
 }

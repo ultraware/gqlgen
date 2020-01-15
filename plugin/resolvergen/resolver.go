@@ -39,6 +39,7 @@ func (m *Plugin) GenerateCode(data *codegen.Data) error {
 			PackageName: data.Config.Resolver.Package,
 			Filename:    data.Config.Resolver.Filename,
 			Data:        resolverBuild,
+			Packages:    data.Config.Packages,
 		})
 	}
 

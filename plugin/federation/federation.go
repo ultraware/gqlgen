@@ -150,7 +150,7 @@ func (f *federation) MutateSchema(s *ast.Schema) error {
 func (f *federation) getSource(builtin bool) *ast.Source {
 	return &ast.Source{
 		Name: "federation.graphql",
-		Input: `# Declarations as required by the federation spec 
+		Input: `# Declarations as required by the federation spec
 # See: https://www.apollographql.com/docs/apollo-server/federation/federation-spec/
 
 scalar _Any
@@ -219,6 +219,7 @@ func (f *federation) GenerateCode(data *codegen.Data) error {
 		Filename:        "service.go",
 		Data:            f,
 		GeneratedHeader: true,
+		Packages:        data.Config.Packages,
 	})
 }
 

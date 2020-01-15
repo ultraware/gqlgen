@@ -6,11 +6,9 @@ import (
 	"sort"
 
 	"github.com/99designs/gqlgen/codegen/config"
-	"github.com/99designs/gqlgen/internal/code"
 	"github.com/pkg/errors"
 	"github.com/vektah/gqlparser/ast"
 	"github.com/vektah/gqlparser/formatter"
-	"golang.org/x/tools/go/packages"
 )
 
 // Data is a unified model of the code to be generated. Plugins may modify this structure to do things like implement
@@ -73,10 +71,7 @@ func BuildData(cfg *config.Config, plugins []SchemaMutator) (*Data, error) {
 		}
 	}
 
-	b.Binder, err = b.Config.NewBinder(b.Schema)
-	if err != nil {
-		return nil, err
-	}
+	b.Binder = b.Config.NewBinder(b.Schema)
 
 	b.Directives, err = b.buildDirectives()
 	if err != nil {
@@ -89,12 +84,6 @@ func BuildData(cfg *config.Config, plugins []SchemaMutator) (*Data, error) {
 			dataDirectives[name] = d
 		}
 	}
-
-	pkgs, err := packages.Load(&packages.Config{Mode: packages.NeedName}, cfg.Models.ReferencedPackages()...)
-	if err != nil {
-		return nil, errors.Wrap(err, "loading failed")
-	}
-	code.RecordPackagesList(pkgs)
 
 	s := Data{
 		Config:     cfg,
@@ -156,8 +145,9 @@ func BuildData(cfg *config.Config, plugins []SchemaMutator) (*Data, error) {
 
 	if b.Binder.SawInvalid {
 		// if we have a syntax error, show it
-		if len(b.Binder.PkgErrors) > 0 {
-			return nil, b.Binder.PkgErrors
+		err := cfg.Packages.Errors()
+		if len(err) > 0 {
+			return nil, err
 		}
 
 		// otherwise show a generic error message
