@@ -31,6 +31,7 @@ type Config struct {
 	Federated                bool                       `yaml:"federated,omitempty"`
 	AdditionalSources        []*ast.Source              `yaml:"-"`
 	Packages                 *code.Packages             `yaml:"-"`
+	Schema                   *ast.Schema                `yaml:"-"`
 }
 
 var cfgFilenames = []string{".gqlgen.yml", "gqlgen.yml", "gqlgen.yaml"}
@@ -42,6 +43,7 @@ func DefaultConfig() *Config {
 		Model:          PackageConfig{Filename: "models_gen.go"},
 		Exec:           PackageConfig{Filename: "generated.go"},
 		Directives:     map[string]DirectiveConfig{},
+		Models:         TypeMap{},
 	}
 }
 
@@ -224,7 +226,114 @@ func (c *PackageConfig) IsDefined() bool {
 	return c.Filename != ""
 }
 
-func (c *Config) Check() error {
+func (c *Config) Init() error {
+	if c.Packages == nil {
+		c.Packages = &code.Packages{}
+	}
+
+	if c.Schema == nil {
+		if err := c.LoadSchema(); err != nil {
+			return err
+		}
+	}
+
+	err := c.injectTypesFromSchema()
+	if err != nil {
+		return err
+	}
+
+	err = c.autobind()
+	if err != nil {
+		return err
+	}
+
+	c.injectBuiltins()
+
+	// prefetch all packages in one big packages.Load call
+	pkgs := []string{
+		"github.com/99designs/gqlgen/graphql",
+		"github.com/99designs/gqlgen/graphql/introspection",
+	}
+	pkgs = append(pkgs, c.Models.ReferencedPackages()...)
+	pkgs = append(pkgs, c.AutoBind...)
+	c.Packages.LoadAll(pkgs...)
+
+	//  check everything is valid on the way out
+	err = c.check()
+	if err != nil {
+		return err
+	}
+
+	return nil
+}
+
+func (c *Config) injectTypesFromSchema() error {
+	c.Directives["goModel"] = DirectiveConfig{
+		SkipRuntime: true,
+	}
+
+	c.Directives["goField"] = DirectiveConfig{
+		SkipRuntime: true,
+	}
+
+	for _, schemaType := range c.Schema.Types {
+		if schemaType == c.Schema.Query || schemaType == c.Schema.Mutation || schemaType == c.Schema.Subscription {
+			continue
+		}
+
+		if bd := schemaType.Directives.ForName("goModel"); bd != nil {
+			if ma := bd.Arguments.ForName("model"); ma != nil {
+				if mv, err := ma.Value.Value(nil); err == nil {
+					c.Models.Add(schemaType.Name, mv.(string))
+				}
+			}
+			if ma := bd.Arguments.ForName("models"); ma != nil {
+				if mvs, err := ma.Value.Value(nil); err == nil {
+					for _, mv := range mvs.([]interface{}) {
+						c.Models.Add(schemaType.Name, mv.(string))
+					}
+				}
+			}
+		}
+
+		if schemaType.Kind == ast.Object || schemaType.Kind == ast.InputObject {
+			for _, field := range schemaType.Fields {
+				if fd := field.Directives.ForName("goField"); fd != nil {
+					forceResolver := c.Models[schemaType.Name].Fields[field.Name].Resolver
+					fieldName := c.Models[schemaType.Name].Fields[field.Name].FieldName
+
+					if ra := fd.Arguments.ForName("forceResolver"); ra != nil {
+						if fr, err := ra.Value.Value(nil); err == nil {
+							forceResolver = fr.(bool)
+						}
+					}
+
+					if na := fd.Arguments.ForName("name"); na != nil {
+						if fr, err := na.Value.Value(nil); err == nil {
+							fieldName = fr.(string)
+						}
+					}
+
+					if c.Models[schemaType.Name].Fields == nil {
+						c.Models[schemaType.Name] = TypeMapEntry{
+							Model:  c.Models[schemaType.Name].Model,
+							Fields: map[string]TypeMapField{},
+						}
+					}
+
+					c.Models[schemaType.Name].Fields[field.Name] = TypeMapField{
+						FieldName: fieldName,
+						Resolver:  forceResolver,
+					}
+				}
+			}
+		}
+	}
+
+	return nil
+}
+
+func (c *Config) check() error {
 	if err := c.Models.Check(); err != nil {
 		return errors.Wrap(err, "config.models")
 	}
@@ -272,8 +381,6 @@ func (c *Config) Check() error {
 		return err
 	}
 
-	c.Packages = &code.Packages{}
-	c.Packages.LoadAll(append(c.Models.ReferencedPackages(), c.AutoBind...)...)
 	return nil
 }
 
@@ -305,7 +412,7 @@ func (tm TypeMap) Check() error {
 }
 
 func (tm TypeMap) ReferencedPackages() []string {
-	pkgs := []string{"github.com/99designs/gqlgen/graphql"}
+	pkgs := []string{}
 
 	for _, typ := range tm {
 		for _, model := range typ.Model {
@@ -402,14 +509,14 @@ func (c *Config) normalize() error {
 	return nil
 }
 
-func (c *Config) Autobind(s *ast.Schema) error {
+func (c *Config) autobind() error {
 	if len(c.AutoBind) == 0 {
 		return nil
 	}
 
 	ps := c.Packages.LoadAll(c.AutoBind...)
 
-	for _, t := range s.Types {
+	for _, t := range c.Schema.Types {
 		if c.Models.UserDefined(t.Name) {
 			continue
 		}
@@ -446,7 +553,7 @@ func (c *Config) Autobind(s *ast.Schema) error {
 	return nil
 }
 
-func (c *Config) InjectBuiltins(s *ast.Schema) {
+func (c *Config) injectBuiltins() {
 	builtins := TypeMap{
 		"__Directive":         {Model: StringList{"github.com/99designs/gqlgen/graphql/introspection.Directive"}},
 		"__DirectiveLocation": {Model: StringList{"github.com/99designs/gqlgen/graphql.String"}},
@@ -487,13 +594,22 @@ func (c *Config) InjectBuiltins(s *ast.Schema) {
 	}
 
 	for typeName, entry := range extraBuiltins {
-		if t, ok := s.Types[typeName]; !c.Models.Exists(typeName) && ok && t.Kind == ast.Scalar {
+		if t, ok := c.Schema.Types[typeName]; !c.Models.Exists(typeName) && ok && t.Kind == ast.Scalar {
 			c.Models[typeName] = entry
 		}
 	}
 }
 
-func (c *Config) LoadSchema() (*ast.Schema, error) {
+func (c *Config) LoadSchema() error {
+	if c.Packages == nil {
+		c.Packages = &code.Packages{}
+	}
+	// first check everything is valid on the way in
+	err := c.check()
+	if err != nil {
+		return err
+	}
+
 	sources := append([]*ast.Source{}, c.AdditionalSources...)
 	for _, filename := range c.SchemaFilename {
 		filename = filepath.ToSlash(filename)
@@ -507,11 +623,14 @@ func (c *Config) LoadSchema() (*ast.Schema, error) {
 		sources = append(sources, &ast.Source{Name: filename, Input: string(schemaRaw)})
 	}
 
-	schema, err := gqlparser.LoadSchema(sources...)
-	if err != nil {
-		return nil, err
+	schema, gerr := gqlparser.LoadSchema(sources...)
+	if gerr != nil {
+		return gerr
 	}
-	return schema, nil
+
+	c.Schema = schema
+
+	return nil
 }
 
 func abs(path string) string {

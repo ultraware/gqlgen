@@ -10,9 +10,10 @@ import (
 )
 
 func TestInjectSources(t *testing.T) {
-	var cfg config.Config
+	cfg, err := config.LoadConfig("test_data/gqlgen.yml")
+	require.NoError(t, err)
 	f := &federation{}
-	f.InjectSources(&cfg)
+	f.InjectSources(cfg)
 	if len(cfg.AdditionalSources) != 2 {
 		t.Fatalf("expected an additional source but got %v", len(cfg.AdditionalSources))
 	}
@@ -47,9 +48,13 @@ func TestGetSDL(t *testing.T) {
 func TestMutateConfig(t *testing.T) {
 	cfg, err := config.LoadConfig("test_data/gqlgen.yml")
 	require.NoError(t, err)
-	require.NoError(t, cfg.Check())
 
 	f := &federation{}
-	err = f.MutateConfig(cfg)
-	require.NoError(t, err)
+	f.InjectSources(cfg)
+
+	require.NoError(t, cfg.LoadSchema())
+	require.NoError(t, f.MutateSchema(cfg.Schema))
+	require.NoError(t, cfg.Init())
+	require.NoError(t, f.MutateConfig(cfg))
+
 }

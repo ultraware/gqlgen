@@ -53,7 +53,7 @@ func createBinder(cfg Config) (*Binder, *ast.Schema) {
 	}
 	cfg.Packages = &code.Packages{}
 
-	s := gqlparser.MustLoadSchema(&ast.Source{Name: "TestAutobinding.schema", Input: `
+	cfg.Schema = gqlparser.MustLoadSchema(&ast.Source{Name: "TestAutobinding.schema", Input: `
 		type Message { id: ID }
 
 		type Query {
@@ -61,7 +61,7 @@ func createBinder(cfg Config) (*Binder, *ast.Schema) {
 		}
 	`})
 
-	b := cfg.NewBinder(s)
+	b := cfg.NewBinder()
 
-	return b, s
+	return b, cfg.Schema
 }

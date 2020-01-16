@@ -37,42 +37,15 @@ type builder struct {
 	Directives map[string]*Directive
 }
 
-type SchemaMutator interface {
-	MutateSchema(s *ast.Schema) error
-}
-
-func BuildData(cfg *config.Config, plugins []SchemaMutator) (*Data, error) {
+func BuildData(cfg *config.Config) (*Data, error) {
 	b := builder{
 		Config: cfg,
+		Schema: cfg.Schema,
 	}
+
+	b.Binder = b.Config.NewBinder()
 
 	var err error
-	b.Schema, err = cfg.LoadSchema()
-	if err != nil {
-		return nil, err
-	}
-
-	err = cfg.Check()
-	if err != nil {
-		return nil, err
-	}
-
-	err = cfg.Autobind(b.Schema)
-	if err != nil {
-		return nil, err
-	}
-
-	cfg.InjectBuiltins(b.Schema)
-
-	for _, p := range plugins {
-		err = p.MutateSchema(b.Schema)
-		if err != nil {
-			return nil, fmt.Errorf("error running MutateSchema: %v", err)
-		}
-	}
-
-	b.Binder = b.Config.NewBinder(b.Schema)
-
 	b.Directives, err = b.buildDirectives()
 	if err != nil {
 		return nil, err

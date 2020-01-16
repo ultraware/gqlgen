@@ -10,20 +10,20 @@ import (
 
 var mode = packages.NeedName |
 	packages.NeedFiles |
-	packages.NeedCompiledGoFiles |
 	packages.NeedImports |
 	packages.NeedTypes |
-	packages.NeedTypesSizes |
 	packages.NeedSyntax |
 	packages.NeedTypesInfo
 
 // Packages is a wrapper around x/tools/go/packages that maintains a (hopefully prewarmed) cache of packages
 // that can be invalidated as writes are made and packages are known to change.
 type Packages struct {
-	packages   map[string]*packages.Package
-	loadErrors []error
+	packages     map[string]*packages.Package
+	importToName map[string]string
+	loadErrors   []error
 
 	numLoadCalls int // stupid test steam. ignore.
+	numNameCalls int // stupid test steam. ignore.
 }
 
 // LoadAll will call packages.Load and return the package data for the given packages,
@@ -43,7 +43,7 @@ func (p *Packages) LoadAll(importPaths ...string) []*packages.Package {
 
 	if len(missing) > 0 {
 		p.numLoadCalls++
-		pkgs, err := packages.Load(&packages.Config{Mode: mode}, importPaths...)
+		pkgs, err := packages.Load(&packages.Config{Mode: mode}, missing...)
 		if err != nil {
 			p.loadErrors = append(p.loadErrors, err)
 		}
@@ -101,11 +101,36 @@ func (p *Packages) NameForPackage(importPath string) string {
 	if importPath == "" {
 		panic(errors.New("import path can not be empty"))
 	}
+	if p.importToName == nil {
+		p.importToName = map[string]string{}
+	}
 
-	pkg := p.Load(importPath)
+	importPath = NormalizeVendor(importPath)
+
+	// if its in the name cache use it
+	if name := p.importToName[importPath]; name != "" {
+		return name
+	}
+
+	// otherwise we might have already loaded the full package data for it cached
+	pkg := p.packages[importPath]
+
+	if pkg == nil {
+		// otherwise do a name only lookup for it but dont put it in the package cache.
+		p.numNameCalls++
+		pkgs, err := packages.Load(&packages.Config{Mode: packages.NeedName}, importPath)
+		if err != nil {
+			p.loadErrors = append(p.loadErrors, err)
+		} else {
+			pkg = pkgs[0]
+		}
+	}
+
 	if pkg == nil || pkg.Name == "" {
 		return SanitizePackageName(filepath.Base(importPath))
 	}
+
+	p.importToName[importPath] = pkg.Name
 
 	return pkg.Name
 }

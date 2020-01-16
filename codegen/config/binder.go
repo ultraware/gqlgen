@@ -20,10 +20,10 @@ type Binder struct {
 	SawInvalid bool
 }
 
-func (c *Config) NewBinder(s *ast.Schema) *Binder {
+func (c *Config) NewBinder() *Binder {
 	return &Binder{
 		pkgs:   c.Packages,
-		schema: s,
+		schema: c.Schema,
 		cfg:    c,
 	}
 }

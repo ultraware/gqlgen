@@ -72,26 +72,14 @@ func (m *Plugin) Name() string {
 }
 
 func (m *Plugin) MutateConfig(cfg *config.Config) error {
-	schema, err := cfg.LoadSchema()
-	if err != nil {
-		return err
-	}
-
-	err = cfg.Autobind(schema)
-	if err != nil {
-		return err
-	}
-
-	cfg.InjectBuiltins(schema)
-
-	binder := cfg.NewBinder(schema)
+	binder := cfg.NewBinder()
 
 	b := &ModelBuild{
 		PackageName: cfg.Model.Package,
 	}
 
 	var hasEntity bool
-	for _, schemaType := range schema.Types {
+	for _, schemaType := range cfg.Schema.Types {
 		if cfg.Models.UserDefined(schemaType.Name) {
 			continue
 		}
@@ -111,14 +99,14 @@ func (m *Plugin) MutateConfig(cfg *config.Config) error {
 
 			b.Interfaces = append(b.Interfaces, it)
 		case ast.Object, ast.InputObject:
-			if schemaType == schema.Query || schemaType == schema.Mutation || schemaType == schema.Subscription {
+			if schemaType == cfg.Schema.Query || schemaType == cfg.Schema.Mutation || schemaType == cfg.Schema.Subscription {
 				continue
 			}
 			it := &Object{
 				Description: schemaType.Description,
 				Name:        schemaType.Name,
 			}
-			for _, implementor := range schema.GetImplements(schemaType) {
+			for _, implementor := range cfg.Schema.GetImplements(schemaType) {
 				it.Implements = append(it.Implements, implementor.Name)
 			}
 
@@ -127,9 +115,10 @@ func (m *Plugin) MutateConfig(cfg *config.Config) error {
 			}
 			for _, field := range schemaType.Fields {
 				var typ types.Type
-				fieldDef := schema.Types[field.Type.Name()]
+				fieldDef := cfg.Schema.Types[field.Type.Name()]
 
 				if cfg.Models.UserDefined(field.Type.Name()) {
+					var err error
 					typ, err = binder.FindTypeFromName(cfg.Models[field.Type.Name()].Model[0])
 					if err != nil {
 						return err

@@ -224,11 +224,13 @@ func (f *federation) GenerateCode(data *codegen.Data) error {
 }
 
 func (f *federation) setEntities(cfg *config.Config) {
-	schema, err := cfg.LoadSchema()
+	// crazy hack to get our injected code in so everything compiles, so we can generate the entity map
+	// so we can reload the full schema.
+	err := cfg.LoadSchema()
 	if err != nil {
 		panic(err)
 	}
-	for _, schemaType := range schema.Types {
+	for _, schemaType := range cfg.Schema.Types {
 		if schemaType.Kind == ast.Object {
 			dir := schemaType.Directives.ForName("key") // TODO: interfaces
 			if dir != nil {

@@ -102,7 +102,7 @@ func TestReferencedPackages(t *testing.T) {
 
 		pkgs := tm.ReferencedPackages()
 
-		assert.Equal(t, []string{"github.com/test", "github.com/otherpkg", "github.com/99designs/gqlgen/graphql"}, pkgs)
+		assert.Equal(t, []string{"github.com/test", "github.com/otherpkg"}, pkgs)
 	})
 
 }
@@ -115,7 +115,7 @@ func TestConfigCheck(t *testing.T) {
 		err = config.normalize()
 		require.NoError(t, err)
 
-		err = config.Check()
+		err = config.Init()
 		require.EqualError(t, err, "filenames exec.go and models.go are in the same directory but have different package definitions")
 	})
 }
@@ -130,12 +130,12 @@ func TestAutobinding(t *testing.T) {
 		Packages: &code.Packages{},
 	}
 
-	s := gqlparser.MustLoadSchema(&ast.Source{Name: "TestAutobinding.schema", Input: `
+	cfg.Schema = gqlparser.MustLoadSchema(&ast.Source{Name: "TestAutobinding.schema", Input: `
 		scalar Banned
 		type Message { id: ID }
 	`})
 
-	require.NoError(t, cfg.Autobind(s))
+	require.NoError(t, cfg.autobind())
 
 	require.Equal(t, "github.com/99designs/gqlgen/example/scalars/model.Banned", cfg.Models["Banned"].Model[0])
 	require.Equal(t, "github.com/99designs/gqlgen/example/chat.Message", cfg.Models["Message"].Model[0])
