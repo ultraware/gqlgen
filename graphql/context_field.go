@@ -26,6 +26,9 @@ type FieldContext struct {
 	Result interface{}
 	// IsMethod indicates if the resolver is a method
 	IsMethod bool
+
+	DoPrepare    bool
+	prepareCount int
 }
 
 type FieldStats struct {

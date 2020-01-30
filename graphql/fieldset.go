@@ -1,6 +1,7 @@
 package graphql
 
 import (
+	"context"
 	"io"
 	"sync"
 )
@@ -27,7 +28,33 @@ func (m *FieldSet) Concurrently(i int, f func() Marshaler) {
 	m.delayed = append(m.delayed, delayedResult{i: i, f: f})
 }
 
-func (m *FieldSet) Dispatch() {
+func (m *FieldSet) Prepare(ctx context.Context) {
+	fctx := GetFieldContext(ctx)
+
+	fctx.prepareCount = 0
+	for _, d := range m.delayed {
+		fctx.DoPrepare = true
+		m.Values[d.i] = d.f()
+		if fctx.DoPrepare == false {
+			fctx.prepareCount++
+		}
+	}
+
+	fctx.DoPrepare = false
+}
+
+func (m *FieldSet) Dispatch(ctx context.Context) {
+	if len(m.delayed) > 1 {
+		fctx := GetFieldContext(ctx)
+		if fctx != nil && fctx.prepareCount == len(m.delayed) {
+			for _, d := range m.delayed[1:] {
+				m.Values[d.i] = d.f()
+			}
+			m.Values[m.delayed[0].i] = m.delayed[0].f()
+			return
+		}
+	}
+
 	if len(m.delayed) == 1 {
 		// only one concurrent task, no need to spawn a goroutine or deal create waitgroups
 		d := m.delayed[0]

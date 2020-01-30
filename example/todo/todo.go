@@ -5,7 +5,6 @@ package todo
 import (
 	"context"
 	"errors"
-	"fmt"
 	"time"
 
 	"github.com/99designs/gqlgen/graphql"
@@ -34,33 +33,90 @@ func New() Config {
 			lastID: 4,
 		},
 	}
-	c.Directives.HasRole = func(ctx context.Context, obj interface{}, next graphql.Resolver, role Role) (interface{}, error) {
-		switch role {
-		case RoleAdmin:
-			// No admin for you!
-			return nil, nil
-		case RoleOwner:
-			ownable, isOwnable := obj.(Ownable)
-			if !isOwnable {
-				return nil, fmt.Errorf("obj cant be owned")
-			}
+	// c.Directives.HasRole = func(ctx context.Context, obj interface{}, next graphql.Resolver, role Role) (interface{}, error) {
+	// 	switch role {
+	// 	case RoleAdmin:
+	// 		// No admin for you!
+	// 		return nil, nil
+	// 	case RoleOwner:
+	// 		ownable, isOwnable := obj.(Ownable)
+	// 		if !isOwnable {
+	// 			return nil, fmt.Errorf("obj cant be owned")
+	// 		}
 
-			if ownable.Owner().ID != getUserId(ctx) {
-				return nil, fmt.Errorf("you dont own that")
-			}
+	// 		if ownable.Owner().ID != getUserId(ctx) {
+	// 			return nil, fmt.Errorf("you dont own that")
+	// 		}
+	// 	}
+
+	// 	return next(ctx)
+	// }
+	// c.Directives.User = func(ctx context.Context, obj interface{}, next graphql.Resolver, id int) (interface{}, error) {
+	// 	return next(context.WithValue(ctx, "userId", id))
+	// }
+	return c
+}
+
+type cache struct {
+	requested_ids map[interface{}]struct{}
+	storage       map[interface{}]interface{}
+}
+
+type loadFunc func(keys []interface{}) []interface{}
+
+func (c *cache) getItem(ctx context.Context, id interface{}, loader loadFunc) interface{} {
+	//preparing?
+	fctx := graphql.GetFieldContext(ctx)
+	if fctx.DoPrepare || (fctx.Parent != nil && fctx.Parent.DoPrepare) {
+		if c.requested_ids == nil {
+			c.requested_ids = make(map[interface{}]struct{})
+		}
+		if _, ok := c.requested_ids[id]; !ok {
+			var empty struct{}
+			c.requested_ids[id] = empty
 		}
 
-		return next(ctx)
+		fctx.DoPrepare = false
+		fctx.Parent.DoPrepare = false
+
+		var dummy struct{}
+		return dummy
 	}
-	c.Directives.User = func(ctx context.Context, obj interface{}, next graphql.Resolver, id int) (interface{}, error) {
-		return next(context.WithValue(ctx, "userId", id))
+
+	if c.storage == nil {
+		c.storage = make(map[interface{}]interface{})
 	}
-	return c
+
+	//loading
+	result := c.storage[id]
+	if result == nil {
+		//collect requested (and missing) id's
+		var ids []interface{}
+		for id := range c.requested_ids {
+			if c.storage[id] == nil {
+				ids = append(ids, id)
+			}
+		}
+		//load missing id's
+		values := loader(ids)
+		//store result
+		for i, id := range ids {
+			c.storage[id] = values[i]
+		}
+		//clear
+		c.requested_ids = make(map[interface{}]struct{})
+		//load again (from cache now)
+		result = c.storage[id]
+	}
+	return result
 }
 
 type resolvers struct {
 	todos  []*Todo
 	lastID int
+
+	tokenCache    cache
+	allTokenCache cache
 }
 
 func (r *resolvers) MyQuery() MyQueryResolver {
@@ -73,19 +129,55 @@ func (r *resolvers) MyMutation() MyMutationResolver {
 
 type QueryResolver resolvers
 
-func (r *QueryResolver) Todo(ctx context.Context, id int) (*Todo, error) {
+func (r *QueryResolver) getTodos(ids []interface{}) []interface{} {
 	time.Sleep(220 * time.Millisecond)
 
-	if id == 666 {
-		panic("critical failure")
-	}
+	var result []interface{}
+	for _, key := range ids {
+		id, ok := key.(int)
+		if !ok {
+			panic("wrong id")
+		}
 
-	for _, todo := range r.todos {
-		if todo.ID == id {
-			return todo, nil
+		if id == 666 {
+			panic("critical failure")
+		}
+
+		found := false
+		for _, todo := range r.todos {
+			if todo.ID == id {
+				result = append(result, todo)
+				found = true
+				break
+			}
+		}
+		if !found {
+			result = append(result, nil)
 		}
 	}
-	return nil, errors.New("not found")
+
+	return result
+}
+
+type todosWrapper struct {
+	todos []*Todo
+}
+
+func (r *QueryResolver) getAllTodos(ids []interface{}) []interface{} {
+	time.Sleep(220 * time.Millisecond)
+	return []interface{}{todosWrapper{todos: r.todos}}
+}
+
+func (r *QueryResolver) Todo(ctx context.Context, id int) (*Todo, error) {
+	result := r.tokenCache.getItem(ctx, id, r.getTodos)
+
+	if result == nil {
+		return nil, errors.New("not found")
+	}
+	if todo, ok := result.(*Todo); ok {
+		return todo, nil
+	}
+	return nil, nil
 }
 
 func (r *QueryResolver) LastTodo(ctx context.Context) (*Todo, error) {
@@ -96,7 +188,13 @@ func (r *QueryResolver) LastTodo(ctx context.Context) (*Todo, error) {
 }
 
 func (r *QueryResolver) Todos(ctx context.Context) ([]*Todo, error) {
-	return r.todos, nil
+	var dummy struct{}
+	result := r.allTokenCache.getItem(ctx, dummy, r.getAllTodos)
+
+	if todo, ok := result.(todosWrapper); ok {
+		return todo.todos, nil
+	}
+	return nil, nil
 }
 
 type MutationResolver resolvers

@@ -16,6 +16,7 @@ type TodoInput struct {
 	Done *bool `json:"done"`
 }
 
+// Prevents access to a field if the user doesnt have the matching role
 type Role string
 
 const (

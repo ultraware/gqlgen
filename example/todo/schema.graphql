@@ -17,7 +17,7 @@ type MyMutation {
 type Todo {
     id: ID!
     text: String!
-    done: Boolean! @hasRole(role: OWNER) # only the owner can see if a todo is done
+    done: Boolean! 
 }
 
 "Passed to createTodo to create a new todo"
@@ -31,8 +31,6 @@ input TodoInput {
 scalar Map
 
 "Prevents access to a field if the user doesnt have the matching role"
-directive @hasRole(role: Role!) on FIELD_DEFINITION
-directive @user(id: ID!) on MUTATION | QUERY | FIELD
 
 enum Role {
     ADMIN
