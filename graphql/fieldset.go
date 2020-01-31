@@ -2,6 +2,7 @@ package graphql
 
 import (
 	"context"
+	"fmt"
 	"io"
 	"sync"
 )
@@ -29,6 +30,11 @@ func (m *FieldSet) Concurrently(i int, f func() Marshaler) {
 }
 
 func (m *FieldSet) Prepare(ctx context.Context) {
+	if len(m.delayed) == 0 {
+		return
+	}
+
+	fmt.Println(`Preparing values`)
 	fctx := GetFieldContext(ctx)
 
 	fctx.prepareCount = 0
@@ -44,6 +50,10 @@ func (m *FieldSet) Prepare(ctx context.Context) {
 }
 
 func (m *FieldSet) Dispatch(ctx context.Context) {
+	if len(m.delayed) > 0 {
+		fmt.Println(`Getting values`)
+	}
+
 	if len(m.delayed) > 1 {
 		fctx := GetFieldContext(ctx)
 		if fctx != nil && fctx.prepareCount == len(m.delayed) {

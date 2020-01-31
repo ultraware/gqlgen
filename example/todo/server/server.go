@@ -3,6 +3,7 @@ package main
 import (
 	"context"
 	"errors"
+	"fmt"
 	"log"
 	"net/http"
 	"runtime/debug"
@@ -23,5 +24,7 @@ func main() {
 
 	http.Handle("/", playground.Handler("Todo", "/query"))
 	http.Handle("/query", srv)
+
+	fmt.Println(`http://localhost:8081/`)
 	log.Fatal(http.ListenAndServe(":8081", nil))
 }

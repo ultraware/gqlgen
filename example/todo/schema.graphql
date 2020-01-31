@@ -1,3 +1,5 @@
+"Regenerate: go run github.com/99designs/gqlgen -v"
+
 schema {
     query: MyQuery
     mutation: MyMutation
@@ -18,6 +20,12 @@ type Todo {
     id: ID!
     text: String!
     done: Boolean! 
+    sub: Sub
+}
+
+type Sub {
+    id: ID!
+    text: String!
 }
 
 "Passed to createTodo to create a new todo"
@@ -31,7 +39,6 @@ input TodoInput {
 scalar Map
 
 "Prevents access to a field if the user doesnt have the matching role"
-
 enum Role {
     ADMIN
     OWNER

@@ -5,6 +5,7 @@ package todo
 import (
 	"context"
 	"errors"
+	"fmt"
 	"time"
 
 	"github.com/99designs/gqlgen/graphql"
@@ -25,10 +26,10 @@ func New() Config {
 	c := Config{
 		Resolvers: &resolvers{
 			todos: []*Todo{
-				{ID: 1, Text: "A todo not to forget", Done: false, owner: you},
-				{ID: 2, Text: "This is the most important", Done: false, owner: you},
-				{ID: 3, Text: "Somebody else's todo", Done: true, owner: them},
-				{ID: 4, Text: "Please do this or else", Done: false, owner: you},
+				{ID: 1, Text: "A todo not to forget", Done: false, owner: you, Sub: &Sub{ID: 101, Text: `Sub 1`}},
+				{ID: 2, Text: "This is the most important", Done: false, owner: you, Sub: &Sub{ID: 102, Text: `Sub 2`}},
+				{ID: 3, Text: "Somebody else's todo", Done: true, owner: them, Sub: &Sub{ID: 103, Text: `Sub 3`}},
+				{ID: 4, Text: "Please do this or else", Done: false, owner: you, Sub: &Sub{ID: 104, Text: `Sub 4`}},
 			},
 			lastID: 4,
 		},
@@ -117,6 +118,7 @@ type resolvers struct {
 
 	tokenCache    cache
 	allTokenCache cache
+	subCache      cache
 }
 
 func (r *resolvers) MyQuery() MyQueryResolver {
@@ -127,9 +129,14 @@ func (r *resolvers) MyMutation() MyMutationResolver {
 	return (*MutationResolver)(r)
 }
 
+func (r *resolvers) Todo() TodoResolver {
+	return (*QueryResolver)(r)
+}
+
 type QueryResolver resolvers
 
 func (r *QueryResolver) getTodos(ids []interface{}) []interface{} {
+	fmt.Println(`DB.getTodos: `, ids)
 	time.Sleep(220 * time.Millisecond)
 
 	var result []interface{}
@@ -159,16 +166,45 @@ func (r *QueryResolver) getTodos(ids []interface{}) []interface{} {
 	return result
 }
 
+func (r *QueryResolver) getSubs(ids []interface{}) []interface{} {
+	fmt.Println(`DB.getSubs: `, ids)
+	time.Sleep(110 * time.Millisecond)
+
+	var result []interface{}
+	for _, key := range ids {
+		id, ok := key.(int)
+		if !ok {
+			panic("wrong id")
+		}
+
+		found := false
+		for _, todo := range r.todos {
+			if todo.ID == id {
+				result = append(result, todo.Sub)
+				found = true
+				break
+			}
+		}
+		if !found {
+			result = append(result, nil)
+		}
+	}
+
+	return result
+}
+
 type todosWrapper struct {
 	todos []*Todo
 }
 
 func (r *QueryResolver) getAllTodos(ids []interface{}) []interface{} {
+	fmt.Println(`DB.getAllTodos`)
 	time.Sleep(220 * time.Millisecond)
 	return []interface{}{todosWrapper{todos: r.todos}}
 }
 
 func (r *QueryResolver) Todo(ctx context.Context, id int) (*Todo, error) {
+	fmt.Println(`get Todo: `, id)
 	result := r.tokenCache.getItem(ctx, id, r.getTodos)
 
 	if result == nil {
@@ -188,11 +224,22 @@ func (r *QueryResolver) LastTodo(ctx context.Context) (*Todo, error) {
 }
 
 func (r *QueryResolver) Todos(ctx context.Context) ([]*Todo, error) {
+	fmt.Println(`get Todos`)
 	var dummy struct{}
 	result := r.allTokenCache.getItem(ctx, dummy, r.getAllTodos)
 
 	if todo, ok := result.(todosWrapper); ok {
 		return todo.todos, nil
+	}
+	return nil, nil
+}
+
+func (r *QueryResolver) Sub(ctx context.Context, obj *Todo) (*Sub, error) {
+	fmt.Println(`get Sub of Todo: `, obj.ID)
+	result := r.subCache.getItem(ctx, obj.ID, r.getSubs)
+
+	if todo, ok := result.(*Sub); ok {
+		return todo, nil
 	}
 	return nil, nil
 }
