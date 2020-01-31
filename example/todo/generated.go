@@ -2035,6 +2035,9 @@ func (ec *executionContext) _MyQuery(ctx context.Context, sel ast.SelectionSet) 
 	}
 
 	out.Prepare(ctx)
+	if !out.PrepareSub(ctx) {
+		return graphql.Null
+	}
 	out.Dispatch(ctx)
 	if invalids > 0 {
 		return graphql.Null
@@ -2068,6 +2071,9 @@ func (ec *executionContext) _Sub(ctx context.Context, sel ast.SelectionSet, obj 
 		}
 	}
 	out.Prepare(ctx)
+	if !out.PrepareSub(ctx) {
+		return graphql.Null
+	}
 	out.Dispatch(ctx)
 	if invalids > 0 {
 		return graphql.Null
@@ -2117,6 +2123,9 @@ func (ec *executionContext) _Todo(ctx context.Context, sel ast.SelectionSet, obj
 		}
 	}
 	out.Prepare(ctx)
+	if !out.PrepareSub(ctx) {
+		return graphql.Null
+	}
 	out.Dispatch(ctx)
 	if invalids > 0 {
 		return graphql.Null

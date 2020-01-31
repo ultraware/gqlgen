@@ -49,6 +49,38 @@ func (m *FieldSet) Prepare(ctx context.Context) {
 	fctx.DoPrepare = false
 }
 
+func (m *FieldSet) PrepareSub(ctx context.Context) bool {
+	if len(m.delayed) == 0 {
+		return true //ok
+	}
+
+	fctx := GetFieldContext(ctx)
+	if fctx.DoSubPrepare {
+		fctx.subPrepareCount++
+		return false //stop
+	}
+	if fctx.Parent != nil && fctx.Parent.DoSubPrepare {
+		fctx.Parent.subPrepareCount++
+		return false //stop
+	}
+	if fctx.Parent != nil && fctx.Parent.Parent != nil && fctx.Parent.Parent.DoSubPrepare {
+		fctx.Parent.Parent.subPrepareCount++
+		return false //stop
+	}
+
+	fmt.Println(`Preparing sub values`)
+	fctx.DoSubPrepare = true
+	fctx.DoPrepare = false
+
+	fctx.subPrepareCount = 0
+	for _, d := range m.delayed {
+		m.Values[d.i] = d.f()
+	}
+
+	fctx.DoSubPrepare = false
+	return true //ok
+}
+
 func (m *FieldSet) Dispatch(ctx context.Context) {
 	if len(m.delayed) > 0 {
 		fmt.Println(`Getting values`)

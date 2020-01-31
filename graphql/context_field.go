@@ -29,6 +29,9 @@ type FieldContext struct {
 
 	DoPrepare    bool
 	prepareCount int
+
+	DoSubPrepare    bool
+	subPrepareCount int
 }
 
 type FieldStats struct {
