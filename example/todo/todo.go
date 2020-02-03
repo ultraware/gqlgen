@@ -77,8 +77,8 @@ func (c *cache) getItem(ctx context.Context, id interface{}, loader loadFunc) in
 			c.requested_ids[id] = empty
 		}
 
-		fctx.DoPrepare = false
-		fctx.Parent.DoPrepare = false
+		fctx.IsPrepared = true
+		fctx.Parent.IsPrepared = true
 
 		var dummy struct{}
 		return dummy
@@ -136,7 +136,7 @@ func (r *resolvers) Todo() TodoResolver {
 type QueryResolver resolvers
 
 func (r *QueryResolver) getTodos(ids []interface{}) []interface{} {
-	fmt.Println(`DB.getTodos: `, ids)
+	fmt.Print(`DB.getTodos: `, ids, ` `)
 	time.Sleep(220 * time.Millisecond)
 
 	var result []interface{}
@@ -167,7 +167,7 @@ func (r *QueryResolver) getTodos(ids []interface{}) []interface{} {
 }
 
 func (r *QueryResolver) getSubs(ids []interface{}) []interface{} {
-	fmt.Println(`DB.getSubs: `, ids)
+	fmt.Print(`DB.getSubs: `, ids, ` `)
 	time.Sleep(110 * time.Millisecond)
 
 	var result []interface{}
@@ -198,21 +198,23 @@ type todosWrapper struct {
 }
 
 func (r *QueryResolver) getAllTodos(ids []interface{}) []interface{} {
-	fmt.Println(`DB.getAllTodos`)
+	fmt.Print(`DB.getAllTodos `)
 	time.Sleep(220 * time.Millisecond)
 	return []interface{}{todosWrapper{todos: r.todos}}
 }
 
 func (r *QueryResolver) Todo(ctx context.Context, id int) (*Todo, error) {
-	fmt.Println(`get Todo: `, id)
+	fmt.Print(`get Todo: `, id, ` `)
 	result := r.tokenCache.getItem(ctx, id, r.getTodos)
 
 	if result == nil {
 		return nil, errors.New("not found")
 	}
 	if todo, ok := result.(*Todo); ok {
+		fmt.Println(`(fetch)`)
 		return todo, nil
 	}
+	fmt.Println(`(prepared)`)
 	return nil, nil
 }
 
@@ -224,23 +226,27 @@ func (r *QueryResolver) LastTodo(ctx context.Context) (*Todo, error) {
 }
 
 func (r *QueryResolver) Todos(ctx context.Context) ([]*Todo, error) {
-	fmt.Println(`get Todos`)
+	fmt.Print(`get Todos `)
 	var dummy struct{}
 	result := r.allTokenCache.getItem(ctx, dummy, r.getAllTodos)
 
 	if todo, ok := result.(todosWrapper); ok {
+		fmt.Println(`(fetch)`)
 		return todo.todos, nil
 	}
+	fmt.Println(`(prepared)`)
 	return nil, nil
 }
 
 func (r *QueryResolver) Sub(ctx context.Context, obj *Todo) (*Sub, error) {
-	fmt.Println(`get Sub of Todo: `, obj.ID)
+	fmt.Print(`get Sub of Todo: `, obj.ID, ` `)
 	result := r.subCache.getItem(ctx, obj.ID, r.getSubs)
 
 	if todo, ok := result.(*Sub); ok {
+		fmt.Println(`(fetch)`)
 		return todo, nil
 	}
+	fmt.Println(`(prepared)`)
 	return nil, nil
 }
 

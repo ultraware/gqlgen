@@ -488,14 +488,30 @@ func (ec *executionContext) _MyQuery_todo(ctx context.Context, field graphql.Col
 			ret = graphql.Null
 		}
 	}()
-	fc := &graphql.FieldContext{
-		Object:   "MyQuery",
-		Field:    field,
-		Args:     nil,
-		IsMethod: true,
+
+	fctx := graphql.GetFieldContext(ctx)
+	if fctx.PreparedStore == nil {
+		fctx.PreparedStore = map[*ast.Field]*graphql.FieldContext{}
+	}
+	fc := fctx.PreparedStore[field.Field]
+	if fc == nil {
+		fc = &graphql.FieldContext{
+			Object:   "MyQuery",
+			Field:    field,
+			Args:     nil,
+			IsMethod: true,
+		}
+		fctx.PreparedStore[field.Field] = fc
+	}
+	ctx = graphql.WithFieldContext(ctx, fc)
+
+	if fc.Result != nil {
+		res := fc.Result.(*Todo)
+		if res != nil {
+			return ec.marshalOTodo2ᚖgithubᚗcomᚋ99designsᚋgqlgenᚋexampleᚋtodoᚐTodo(ctx, field.Selections, res)
+		}
 	}
 
-	ctx = graphql.WithFieldContext(ctx, fc)
 	rawArgs := field.ArgumentMap(ec.Variables)
 	args, err := ec.field_MyQuery_todo_args(ctx, rawArgs)
 	if err != nil {
@@ -557,14 +573,30 @@ func (ec *executionContext) _MyQuery_todos(ctx context.Context, field graphql.Co
 			ret = graphql.Null
 		}
 	}()
-	fc := &graphql.FieldContext{
-		Object:   "MyQuery",
-		Field:    field,
-		Args:     nil,
-		IsMethod: true,
+
+	fctx := graphql.GetFieldContext(ctx)
+	if fctx.PreparedStore == nil {
+		fctx.PreparedStore = map[*ast.Field]*graphql.FieldContext{}
+	}
+	fc := fctx.PreparedStore[field.Field]
+	if fc == nil {
+		fc = &graphql.FieldContext{
+			Object:   "MyQuery",
+			Field:    field,
+			Args:     nil,
+			IsMethod: true,
+		}
+		fctx.PreparedStore[field.Field] = fc
+	}
+	ctx = graphql.WithFieldContext(ctx, fc)
+
+	if fc.Result != nil {
+		res := fc.Result.([]*Todo)
+		if res != nil {
+			return ec.marshalNTodo2ᚕᚖgithubᚗcomᚋ99designsᚋgqlgenᚋexampleᚋtodoᚐTodoᚄ(ctx, field.Selections, res)
+		}
 	}
 
-	ctx = graphql.WithFieldContext(ctx, fc)
 	resTmp, err := ec.ResolverMiddleware(ctx, func(rctx context.Context) (interface{}, error) {
 		ctx = rctx // use context from middleware stack in children
 		return ec.resolvers.MyQuery().Todos(rctx)
@@ -830,14 +862,30 @@ func (ec *executionContext) _Todo_sub(ctx context.Context, field graphql.Collect
 			ret = graphql.Null
 		}
 	}()
-	fc := &graphql.FieldContext{
-		Object:   "Todo",
-		Field:    field,
-		Args:     nil,
-		IsMethod: true,
+
+	fctx := graphql.GetFieldContext(ctx)
+	if fctx.PreparedStore == nil {
+		fctx.PreparedStore = map[*ast.Field]*graphql.FieldContext{}
+	}
+	fc := fctx.PreparedStore[field.Field]
+	if fc == nil {
+		fc = &graphql.FieldContext{
+			Object:   "Todo",
+			Field:    field,
+			Args:     nil,
+			IsMethod: true,
+		}
+		fctx.PreparedStore[field.Field] = fc
+	}
+	ctx = graphql.WithFieldContext(ctx, fc)
+
+	if fc.Result != nil {
+		res := fc.Result.(*Sub)
+		if res != nil {
+			return ec.marshalOSub2ᚖgithubᚗcomᚋ99designsᚋgqlgenᚋexampleᚋtodoᚐSub(ctx, field.Selections, res)
+		}
 	}
 
-	ctx = graphql.WithFieldContext(ctx, fc)
 	resTmp, err := ec.ResolverMiddleware(ctx, func(rctx context.Context) (interface{}, error) {
 		ctx = rctx // use context from middleware stack in children
 		return ec.resolvers.Todo().Sub(rctx, obj)
@@ -2084,9 +2132,17 @@ func (ec *executionContext) _Sub(ctx context.Context, sel ast.SelectionSet, obj 
 var todoImplementors = []string{"Todo"}
 
 func (ec *executionContext) _Todo(ctx context.Context, sel ast.SelectionSet, obj *Todo) graphql.Marshaler {
-	fields := graphql.CollectFields(ec.OperationContext, sel, todoImplementors)
+	fctx := graphql.GetFieldContext(ctx)
+	fields := fctx.PreparedFields
+	out := fctx.PreparedOut
+	if out == nil {
+		fields = graphql.CollectFields(ec.OperationContext, sel, todoImplementors)
+		out = graphql.NewFieldSet(fields)
 
-	out := graphql.NewFieldSet(fields)
+		fctx.PreparedFields = fields
+		fctx.PreparedOut = out
+	}
+
 	var invalids uint32
 	for i, field := range fields {
 		switch field.Name {
@@ -2455,12 +2511,24 @@ func (ec *executionContext) marshalNTodo2ᚕᚖgithubᚗcomᚋ99designsᚋgqlgen
 	if !isLen1 {
 		wg.Add(len(v))
 	}
+
+	fctx := graphql.GetFieldContext(ctx)
+
 	for i := range v {
 		i := i
-		fc := &graphql.FieldContext{
-			Index:  &i,
-			Result: &v[i],
+
+		if fctx.PreparedStore2 == nil {
+			fctx.PreparedStore2 = map[int]*graphql.FieldContext{}
 		}
+		fc := fctx.PreparedStore2[i]
+		if fc == nil {
+			fc = &graphql.FieldContext{
+				Index:  &i,
+				Result: &v[i],
+			}
+			fctx.PreparedStore2[i] = fc
+		}
+
 		ctx := graphql.WithFieldContext(ctx, fc)
 		f := func(i int) {
 			defer func() {
@@ -2477,7 +2545,7 @@ func (ec *executionContext) marshalNTodo2ᚕᚖgithubᚗcomᚋ99designsᚋgqlgen
 		if isLen1 {
 			f(i)
 		} else {
-			go f(i)
+			f(i)
 		}
 
 	}

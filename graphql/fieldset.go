@@ -34,18 +34,23 @@ func (m *FieldSet) Prepare(ctx context.Context) {
 		return
 	}
 
-	fmt.Println(`Preparing values`)
 	fctx := GetFieldContext(ctx)
+	if fctx.IsMethod && fctx.Parent != nil && fctx.Parent.IsSubPrepared {
+		return
+	}
+	if !fctx.IsMethod && fctx.Index != nil && fctx.Parent != nil && fctx.Parent.Parent != nil && fctx.Parent.Parent.IsSubPrepared {
+		return
+	}
+	fmt.Println(`Preparing values`)
 
+	fctx.DoPrepare = true
 	fctx.prepareCount = 0
 	for _, d := range m.delayed {
-		fctx.DoPrepare = true
 		m.Values[d.i] = d.f()
-		if fctx.DoPrepare == false {
+		if fctx.IsPrepared {
 			fctx.prepareCount++
 		}
 	}
-
 	fctx.DoPrepare = false
 }
 
@@ -59,13 +64,17 @@ func (m *FieldSet) PrepareSub(ctx context.Context) bool {
 		fctx.subPrepareCount++
 		return false //stop
 	}
-	if fctx.Parent != nil && fctx.Parent.DoSubPrepare {
-		fctx.Parent.subPrepareCount++
-		return false //stop
-	}
-	if fctx.Parent != nil && fctx.Parent.Parent != nil && fctx.Parent.Parent.DoSubPrepare {
-		fctx.Parent.Parent.subPrepareCount++
-		return false //stop
+
+	parent := fctx.Parent
+	for {
+		if parent == nil {
+			break
+		}
+		if parent.DoSubPrepare {
+			parent.subPrepareCount++
+			return false //stop
+		}
+		parent = parent.Parent
 	}
 
 	fmt.Println(`Preparing sub values`)
@@ -78,10 +87,17 @@ func (m *FieldSet) PrepareSub(ctx context.Context) bool {
 	}
 
 	fctx.DoSubPrepare = false
+	fctx.IsSubPrepared = true
 	return true //ok
 }
 
 func (m *FieldSet) Dispatch(ctx context.Context) {
+
+	fctx := GetFieldContext(ctx)
+	if fctx.subPrepareCount == 0 {
+		return //already fetch by sub-prepare
+	}
+
 	if len(m.delayed) > 0 {
 		fmt.Println(`Getting values`)
 	}

@@ -3,6 +3,8 @@ package graphql
 import (
 	"context"
 	"time"
+
+	"github.com/vektah/gqlparser/ast"
 )
 
 type key string
@@ -27,11 +29,20 @@ type FieldContext struct {
 	// IsMethod indicates if the resolver is a method
 	IsMethod bool
 
+	//PreparedStorePos int
+	PreparedStore  map[*ast.Field]*FieldContext
+	PreparedStore2 map[int]*FieldContext
+
+	PreparedFields []CollectedField
+	PreparedOut    *FieldSet
+
 	DoPrepare    bool
 	prepareCount int
+	IsPrepared   bool
 
 	DoSubPrepare    bool
 	subPrepareCount int
+	IsSubPrepared   bool
 }
 
 type FieldStats struct {
