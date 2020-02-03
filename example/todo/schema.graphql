@@ -26,6 +26,12 @@ type Todo {
 type Sub {
     id: ID!
     text: String!
+    sub2: Sub2
+}
+
+type Sub2 {
+    id: ID!
+    text: String!
 }
 
 "Passed to createTodo to create a new todo"

@@ -11,6 +11,12 @@ import (
 type Sub struct {
 	ID   int    `json:"id"`
 	Text string `json:"text"`
+	Sub2 *Sub2  `json:"sub2"`
+}
+
+type Sub2 struct {
+	ID   int    `json:"id"`
+	Text string `json:"text"`
 }
 
 // Passed to createTodo to create a new todo

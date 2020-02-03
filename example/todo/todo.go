@@ -129,9 +129,9 @@ func (r *resolvers) MyMutation() MyMutationResolver {
 	return (*MutationResolver)(r)
 }
 
-func (r *resolvers) Todo() TodoResolver {
-	return (*QueryResolver)(r)
-}
+// func (r *resolvers) Todo() TodoResolver {
+// 	return (*QueryResolver)(r)
+// }
 
 type QueryResolver resolvers
 
