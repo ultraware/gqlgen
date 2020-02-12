@@ -43,6 +43,10 @@ type FieldContext struct {
 	DoSubPrepare    bool
 	subPrepareCount int
 	IsSubPrepared   bool
+
+	MasterPrepare      bool
+	MasterPrepareCount int
+	MasterPrepareDone  bool
 }
 
 type FieldStats struct {

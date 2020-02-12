@@ -31,6 +31,12 @@ func New() Config {
 				{ID: 3, Text: "Somebody else's todo", Done: true, owner: them, Sub: &Sub{ID: 103, Text: `Sub 3`}},
 				{ID: 4, Text: "Please do this or else", Done: false, owner: you, Sub: &Sub{ID: 104, Text: `Sub 4`}},
 			},
+			nexts: []*Next2{
+				{ID: 101, Text: `Next 1`, More: &More3{ID: 101, Text: `More 1`}},
+				{ID: 102, Text: `Next 2`, More: &More3{ID: 102, Text: `More 2`}},
+				{ID: 103, Text: `Next 3`, More: &More3{ID: 103, Text: `More 3`}},
+				{ID: 104, Text: `Next 4`, More: &More3{ID: 104, Text: `More 4`}},
+			},
 			lastID: 4,
 		},
 	}
@@ -98,6 +104,9 @@ func (c *cache) getItem(ctx context.Context, id interface{}, loader loadFunc) in
 				ids = append(ids, id)
 			}
 		}
+		if len(ids) == 0 {
+			ids = append(ids, id)
+		}
 		//load missing id's
 		values := loader(ids)
 		//store result
@@ -113,12 +122,16 @@ func (c *cache) getItem(ctx context.Context, id interface{}, loader loadFunc) in
 }
 
 type resolvers struct {
-	todos  []*Todo
+	todos []*Todo
+	nexts []*Next2
+
 	lastID int
 
 	tokenCache    cache
 	allTokenCache cache
 	subCache      cache
+	nextCache     cache
+	moreCache     cache
 }
 
 func (r *resolvers) MyQuery() MyQueryResolver {
@@ -129,9 +142,13 @@ func (r *resolvers) MyMutation() MyMutationResolver {
 	return (*MutationResolver)(r)
 }
 
-// func (r *resolvers) Todo() TodoResolver {
-// 	return (*QueryResolver)(r)
-// }
+func (r *resolvers) Next2() Next2Resolver {
+	return (*QueryResolver)(r)
+}
+
+func (r *resolvers) Sub() SubResolver {
+	return (*QueryResolver)(r)
+}
 
 type QueryResolver resolvers
 
@@ -193,6 +210,58 @@ func (r *QueryResolver) getSubs(ids []interface{}) []interface{} {
 	return result
 }
 
+func (r *QueryResolver) getNext(ids []interface{}) []interface{} {
+	fmt.Print(`DB.getNext: `, ids, ` `)
+	time.Sleep(110 * time.Millisecond)
+
+	var result []interface{}
+	for _, key := range ids {
+		id, ok := key.(int)
+		if !ok {
+			panic("wrong id")
+		}
+
+		found := false
+		for _, next := range r.nexts {
+			if next.ID == id {
+				result = append(result, next)
+				found = true
+				break
+			}
+		}
+		if !found {
+			result = append(result, nil)
+		}
+	}
+	return result
+}
+
+func (r *QueryResolver) getMore(ids []interface{}) []interface{} {
+	fmt.Print(`DB.getMore: `, ids, ` `)
+	time.Sleep(110 * time.Millisecond)
+
+	var result []interface{}
+	for _, key := range ids {
+		id, ok := key.(int)
+		if !ok {
+			panic("wrong id")
+		}
+
+		found := false
+		for _, next := range r.nexts {
+			if next.ID == id {
+				result = append(result, next.More)
+				found = true
+				break
+			}
+		}
+		if !found {
+			result = append(result, nil)
+		}
+	}
+	return result
+}
+
 type todosWrapper struct {
 	todos []*Todo
 }
@@ -245,6 +314,30 @@ func (r *QueryResolver) Sub(ctx context.Context, obj *Todo) (*Sub, error) {
 	if todo, ok := result.(*Sub); ok {
 		fmt.Println(`(fetch)`)
 		return todo, nil
+	}
+	fmt.Println(`(prepared)`)
+	return nil, nil
+}
+
+func (r *QueryResolver) More(ctx context.Context, obj *Next2) (*More3, error) {
+	fmt.Print(`get More of Next2: `, obj.ID, ` `)
+	result := r.moreCache.getItem(ctx, obj.ID, r.getMore)
+
+	if more, ok := result.(*More3); ok {
+		fmt.Println(`(fetch)`)
+		return more, nil
+	}
+	fmt.Println(`(prepared)`)
+	return nil, nil
+}
+
+func (r *QueryResolver) Next2(ctx context.Context, obj *Sub) (*Next2, error) {
+	fmt.Print(`get Next2 of Sub: `, obj.ID, ` `)
+	result := r.nextCache.getItem(ctx, obj.ID, r.getNext)
+
+	if next2, ok := result.(*Next2); ok {
+		fmt.Println(`(fetch)`)
+		return next2, nil
 	}
 	fmt.Println(`(prepared)`)
 	return nil, nil

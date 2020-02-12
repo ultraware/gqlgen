@@ -36,12 +36,19 @@ type Config struct {
 type ResolverRoot interface {
 	MyMutation() MyMutationResolver
 	MyQuery() MyQueryResolver
+	Next2() Next2Resolver
+	Sub() SubResolver
 }
 
 type DirectiveRoot struct {
 }
 
 type ComplexityRoot struct {
+	More3 struct {
+		ID   func(childComplexity int) int
+		Text func(childComplexity int) int
+	}
+
 	MyMutation struct {
 		CreateTodo func(childComplexity int, todo TodoInput) int
 		UpdateTodo func(childComplexity int, id int, changes map[string]interface{}) int
@@ -53,15 +60,16 @@ type ComplexityRoot struct {
 		Todos    func(childComplexity int) int
 	}
 
-	Sub struct {
+	Next2 struct {
 		ID   func(childComplexity int) int
-		Sub2 func(childComplexity int) int
+		More func(childComplexity int) int
 		Text func(childComplexity int) int
 	}
 
-	Sub2 struct {
-		ID   func(childComplexity int) int
-		Text func(childComplexity int) int
+	Sub struct {
+		ID    func(childComplexity int) int
+		Next2 func(childComplexity int) int
+		Text  func(childComplexity int) int
 	}
 
 	Todo struct {
@@ -81,6 +89,12 @@ type MyQueryResolver interface {
 	LastTodo(ctx context.Context) (*Todo, error)
 	Todos(ctx context.Context) ([]*Todo, error)
 }
+type Next2Resolver interface {
+	More(ctx context.Context, obj *Next2) (*More3, error)
+}
+type SubResolver interface {
+	Next2(ctx context.Context, obj *Sub) (*Next2, error)
+}
 
 type executableSchema struct {
 	resolvers  ResolverRoot
@@ -96,6 +110,20 @@ func (e *executableSchema) Complexity(typeName, field string, childComplexity in
 	ec := executionContext{nil, e}
 	_ = ec
 	switch typeName + "." + field {
+
+	case "More3.id":
+		if e.complexity.More3.ID == nil {
+			break
+		}
+
+		return e.complexity.More3.ID(childComplexity), true
+
+	case "More3.text":
+		if e.complexity.More3.Text == nil {
+			break
+		}
+
+		return e.complexity.More3.Text(childComplexity), true
 
 	case "MyMutation.createTodo":
 		if e.complexity.MyMutation.CreateTodo == nil {
@@ -147,6 +175,27 @@ func (e *executableSchema) Complexity(typeName, field string, childComplexity in
 
 		return e.complexity.MyQuery.Todos(childComplexity), true
 
+	case "Next2.id":
+		if e.complexity.Next2.ID == nil {
+			break
+		}
+
+		return e.complexity.Next2.ID(childComplexity), true
+
+	case "Next2.more":
+		if e.complexity.Next2.More == nil {
+			break
+		}
+
+		return e.complexity.Next2.More(childComplexity), true
+
+	case "Next2.text":
+		if e.complexity.Next2.Text == nil {
+			break
+		}
+
+		return e.complexity.Next2.Text(childComplexity), true
+
 	case "Sub.id":
 		if e.complexity.Sub.ID == nil {
 			break
@@ -154,12 +203,12 @@ func (e *executableSchema) Complexity(typeName, field string, childComplexity in
 
 		return e.complexity.Sub.ID(childComplexity), true
 
-	case "Sub.sub2":
-		if e.complexity.Sub.Sub2 == nil {
+	case "Sub.next2":
+		if e.complexity.Sub.Next2 == nil {
 			break
 		}
 
-		return e.complexity.Sub.Sub2(childComplexity), true
+		return e.complexity.Sub.Next2(childComplexity), true
 
 	case "Sub.text":
 		if e.complexity.Sub.Text == nil {
@@ -167,20 +216,6 @@ func (e *executableSchema) Complexity(typeName, field string, childComplexity in
 		}
 
 		return e.complexity.Sub.Text(childComplexity), true
-
-	case "Sub2.id":
-		if e.complexity.Sub2.ID == nil {
-			break
-		}
-
-		return e.complexity.Sub2.ID(childComplexity), true
-
-	case "Sub2.text":
-		if e.complexity.Sub2.Text == nil {
-			break
-		}
-
-		return e.complexity.Sub2.Text(childComplexity), true
 
 	case "Todo.done":
 		if e.complexity.Todo.Done == nil {
@@ -279,6 +314,10 @@ var parsedSchema = gqlparser.MustLoadSchema(
 	mutation: MyMutation
 }
 scalar Map
+type More3 {
+	id: ID!
+	text: String!
+}
 type MyMutation {
 	createTodo(todo: TodoInput!): Todo!
 	updateTodo(id: ID!, changes: Map!): Todo
@@ -287,6 +326,11 @@ type MyQuery {
 	todo(id: ID!): Todo
 	lastTodo: Todo
 	todos: [Todo!]!
+}
+type Next2 {
+	id: ID!
+	text: String!
+	more: More3
 }
 """
 Prevents access to a field if the user doesnt have the matching role
@@ -298,11 +342,7 @@ enum Role {
 type Sub {
 	id: ID!
 	text: String!
-	sub2: Sub2
-}
-type Sub2 {
-	id: ID!
-	text: String!
+	next2: Next2
 }
 type Todo {
 	id: ID!
@@ -429,6 +469,74 @@ func (ec *executionContext) field___Type_fields_args(ctx context.Context, rawArg
 // endregion ************************** directives.gotpl **************************
 
 // region    **************************** field.gotpl *****************************
+
+func (ec *executionContext) _More3_id(ctx context.Context, field graphql.CollectedField, obj *More3) (ret graphql.Marshaler) {
+	defer func() {
+		if r := recover(); r != nil {
+			ec.Error(ctx, ec.Recover(ctx, r))
+			ret = graphql.Null
+		}
+	}()
+	fc := &graphql.FieldContext{
+		Object:   "More3",
+		Field:    field,
+		Args:     nil,
+		IsMethod: false,
+	}
+
+	ctx = graphql.WithFieldContext(ctx, fc)
+	resTmp, err := ec.ResolverMiddleware(ctx, func(rctx context.Context) (interface{}, error) {
+		ctx = rctx // use context from middleware stack in children
+		return obj.ID, nil
+	})
+	if err != nil {
+		ec.Error(ctx, err)
+		return graphql.Null
+	}
+	if resTmp == nil {
+		if !graphql.HasFieldError(ctx, fc) {
+			ec.Errorf(ctx, "must not be null")
+		}
+		return graphql.Null
+	}
+	res := resTmp.(int)
+	fc.Result = res
+	return ec.marshalNID2int(ctx, field.Selections, res)
+}
+
+func (ec *executionContext) _More3_text(ctx context.Context, field graphql.CollectedField, obj *More3) (ret graphql.Marshaler) {
+	defer func() {
+		if r := recover(); r != nil {
+			ec.Error(ctx, ec.Recover(ctx, r))
+			ret = graphql.Null
+		}
+	}()
+	fc := &graphql.FieldContext{
+		Object:   "More3",
+		Field:    field,
+		Args:     nil,
+		IsMethod: false,
+	}
+
+	ctx = graphql.WithFieldContext(ctx, fc)
+	resTmp, err := ec.ResolverMiddleware(ctx, func(rctx context.Context) (interface{}, error) {
+		ctx = rctx // use context from middleware stack in children
+		return obj.Text, nil
+	})
+	if err != nil {
+		ec.Error(ctx, err)
+		return graphql.Null
+	}
+	if resTmp == nil {
+		if !graphql.HasFieldError(ctx, fc) {
+			ec.Errorf(ctx, "must not be null")
+		}
+		return graphql.Null
+	}
+	res := resTmp.(string)
+	fc.Result = res
+	return ec.marshalNString2string(ctx, field.Selections, res)
+}
 
 func (ec *executionContext) _MyMutation_createTodo(ctx context.Context, field graphql.CollectedField) (ret graphql.Marshaler) {
 	defer func() {
@@ -713,6 +821,121 @@ func (ec *executionContext) _MyQuery___schema(ctx context.Context, field graphql
 	return ec.marshalO__Schema2ᚖgithubᚗcomᚋ99designsᚋgqlgenᚋgraphqlᚋintrospectionᚐSchema(ctx, field.Selections, res)
 }
 
+func (ec *executionContext) _Next2_id(ctx context.Context, field graphql.CollectedField, obj *Next2) (ret graphql.Marshaler) {
+	defer func() {
+		if r := recover(); r != nil {
+			ec.Error(ctx, ec.Recover(ctx, r))
+			ret = graphql.Null
+		}
+	}()
+	fc := &graphql.FieldContext{
+		Object:   "Next2",
+		Field:    field,
+		Args:     nil,
+		IsMethod: false,
+	}
+
+	ctx = graphql.WithFieldContext(ctx, fc)
+	resTmp, err := ec.ResolverMiddleware(ctx, func(rctx context.Context) (interface{}, error) {
+		ctx = rctx // use context from middleware stack in children
+		return obj.ID, nil
+	})
+	if err != nil {
+		ec.Error(ctx, err)
+		return graphql.Null
+	}
+	if resTmp == nil {
+		if !graphql.HasFieldError(ctx, fc) {
+			ec.Errorf(ctx, "must not be null")
+		}
+		return graphql.Null
+	}
+	res := resTmp.(int)
+	fc.Result = res
+	return ec.marshalNID2int(ctx, field.Selections, res)
+}
+
+func (ec *executionContext) _Next2_text(ctx context.Context, field graphql.CollectedField, obj *Next2) (ret graphql.Marshaler) {
+	defer func() {
+		if r := recover(); r != nil {
+			ec.Error(ctx, ec.Recover(ctx, r))
+			ret = graphql.Null
+		}
+	}()
+	fc := &graphql.FieldContext{
+		Object:   "Next2",
+		Field:    field,
+		Args:     nil,
+		IsMethod: false,
+	}
+
+	ctx = graphql.WithFieldContext(ctx, fc)
+	resTmp, err := ec.ResolverMiddleware(ctx, func(rctx context.Context) (interface{}, error) {
+		ctx = rctx // use context from middleware stack in children
+		return obj.Text, nil
+	})
+	if err != nil {
+		ec.Error(ctx, err)
+		return graphql.Null
+	}
+	if resTmp == nil {
+		if !graphql.HasFieldError(ctx, fc) {
+			ec.Errorf(ctx, "must not be null")
+		}
+		return graphql.Null
+	}
+	res := resTmp.(string)
+	fc.Result = res
+	return ec.marshalNString2string(ctx, field.Selections, res)
+}
+
+func (ec *executionContext) _Next2_more(ctx context.Context, field graphql.CollectedField, obj *Next2) (ret graphql.Marshaler) {
+	defer func() {
+		if r := recover(); r != nil {
+			ec.Error(ctx, ec.Recover(ctx, r))
+			ret = graphql.Null
+		}
+	}()
+
+	fctx := graphql.GetFieldContext(ctx)
+	if fctx.PreparedStore == nil {
+		fctx.PreparedStore = map[*ast.Field]*graphql.FieldContext{}
+	}
+	fc := fctx.PreparedStore[field.Field]
+	if fc == nil {
+		fc = &graphql.FieldContext{
+			Object:   "Next2",
+			Field:    field,
+			Args:     nil,
+			IsMethod: true,
+		}
+		fctx.PreparedStore[field.Field] = fc
+	}
+	ctx = graphql.WithFieldContext(ctx, fc)
+
+	if fc.Result != nil {
+		res := fc.Result.(*More3)
+		if res != nil {
+			return ec.marshalOMore32ᚖgithubᚗcomᚋ99designsᚋgqlgenᚋexampleᚋtodoᚐMore3(ctx, field.Selections, res)
+		}
+	}
+
+	resTmp, err := ec.ResolverMiddleware(ctx, func(rctx context.Context) (interface{}, error) {
+		ctx = rctx // use context from middleware stack in children
+		return ec.resolvers.Next2().More(rctx, obj)
+	})
+	if err != nil {
+		ec.Error(ctx, err)
+		return graphql.Null
+	}
+	if resTmp == nil {
+		return graphql.Null
+	}
+	res := resTmp.(*More3)
+	fc.Result = res
+	return ec.marshalOMore32ᚖgithubᚗcomᚋ99designsᚋgqlgenᚋexampleᚋtodoᚐMore3(ctx, field.Selections, res)
+}
+
 func (ec *executionContext) _Sub_id(ctx context.Context, field graphql.CollectedField, obj *Sub) (ret graphql.Marshaler) {
 	defer func() {
 		if r := recover(); r != nil {
@@ -781,7 +1004,7 @@ func (ec *executionContext) _Sub_text(ctx context.Context, field graphql.Collect
 	return ec.marshalNString2string(ctx, field.Selections, res)
 }
 
-func (ec *executionContext) _Sub_sub2(ctx context.Context, field graphql.CollectedField, obj *Sub) (ret graphql.Marshaler) {
+func (ec *executionContext) _Sub_next2(ctx context.Context, field graphql.CollectedField, obj *Sub) (ret graphql.Marshaler) {
 	defer func() {
 		if r := recover(); r != nil {
 			ec.Error(ctx, ec.Recover(ctx, r))
@@ -799,22 +1022,22 @@ func (ec *executionContext) _Sub_sub2(ctx context.Context, field graphql.Collect
 			Object:   "Sub",
 			Field:    field,
 			Args:     nil,
-			IsMethod: false,
+			IsMethod: true,
 		}
 		fctx.PreparedStore[field.Field] = fc
 	}
 	ctx = graphql.WithFieldContext(ctx, fc)
 
 	if fc.Result != nil {
-		res := fc.Result.(*Sub2)
+		res := fc.Result.(*Next2)
 		if res != nil {
-			return ec.marshalOSub22ᚖgithubᚗcomᚋ99designsᚋgqlgenᚋexampleᚋtodoᚐSub2(ctx, field.Selections, res)
+			return ec.marshalONext22ᚖgithubᚗcomᚋ99designsᚋgqlgenᚋexampleᚋtodoᚐNext2(ctx, field.Selections, res)
 		}
 	}
 
 	resTmp, err := ec.ResolverMiddleware(ctx, func(rctx context.Context) (interface{}, error) {
 		ctx = rctx // use context from middleware stack in children
-		return obj.Sub2, nil
+		return ec.resolvers.Sub().Next2(rctx, obj)
 	})
 	if err != nil {
 		ec.Error(ctx, err)
@@ -823,77 +1046,9 @@ func (ec *executionContext) _Sub_sub2(ctx context.Context, field graphql.Collect
 	if resTmp == nil {
 		return graphql.Null
 	}
-	res := resTmp.(*Sub2)
+	res := resTmp.(*Next2)
 	fc.Result = res
-	return ec.marshalOSub22ᚖgithubᚗcomᚋ99designsᚋgqlgenᚋexampleᚋtodoᚐSub2(ctx, field.Selections, res)
-}
-
-func (ec *executionContext) _Sub2_id(ctx context.Context, field graphql.CollectedField, obj *Sub2) (ret graphql.Marshaler) {
-	defer func() {
-		if r := recover(); r != nil {
-			ec.Error(ctx, ec.Recover(ctx, r))
-			ret = graphql.Null
-		}
-	}()
-	fc := &graphql.FieldContext{
-		Object:   "Sub2",
-		Field:    field,
-		Args:     nil,
-		IsMethod: false,
-	}
-
-	ctx = graphql.WithFieldContext(ctx, fc)
-	resTmp, err := ec.ResolverMiddleware(ctx, func(rctx context.Context) (interface{}, error) {
-		ctx = rctx // use context from middleware stack in children
-		return obj.ID, nil
-	})
-	if err != nil {
-		ec.Error(ctx, err)
-		return graphql.Null
-	}
-	if resTmp == nil {
-		if !graphql.HasFieldError(ctx, fc) {
-			ec.Errorf(ctx, "must not be null")
-		}
-		return graphql.Null
-	}
-	res := resTmp.(int)
-	fc.Result = res
-	return ec.marshalNID2int(ctx, field.Selections, res)
-}
-
-func (ec *executionContext) _Sub2_text(ctx context.Context, field graphql.CollectedField, obj *Sub2) (ret graphql.Marshaler) {
-	defer func() {
-		if r := recover(); r != nil {
-			ec.Error(ctx, ec.Recover(ctx, r))
-			ret = graphql.Null
-		}
-	}()
-	fc := &graphql.FieldContext{
-		Object:   "Sub2",
-		Field:    field,
-		Args:     nil,
-		IsMethod: false,
-	}
-
-	ctx = graphql.WithFieldContext(ctx, fc)
-	resTmp, err := ec.ResolverMiddleware(ctx, func(rctx context.Context) (interface{}, error) {
-		ctx = rctx // use context from middleware stack in children
-		return obj.Text, nil
-	})
-	if err != nil {
-		ec.Error(ctx, err)
-		return graphql.Null
-	}
-	if resTmp == nil {
-		if !graphql.HasFieldError(ctx, fc) {
-			ec.Errorf(ctx, "must not be null")
-		}
-		return graphql.Null
-	}
-	res := resTmp.(string)
-	fc.Result = res
-	return ec.marshalNString2string(ctx, field.Selections, res)
+	return ec.marshalONext22ᚖgithubᚗcomᚋ99designsᚋgqlgenᚋexampleᚋtodoᚐNext2(ctx, field.Selections, res)
 }
 
 func (ec *executionContext) _Todo_id(ctx context.Context, field graphql.CollectedField, obj *Todo) (ret graphql.Marshaler) {
@@ -2132,6 +2287,52 @@ func (ec *executionContext) unmarshalInputTodoInput(ctx context.Context, obj int
 
 // region    **************************** object.gotpl ****************************
 
+var more3Implementors = []string{"More3"}
+
+func (ec *executionContext) _More3(ctx context.Context, sel ast.SelectionSet, obj *More3) graphql.Marshaler {
+	fctx := graphql.GetFieldContext(ctx)
+	fields := fctx.PreparedFields
+	out := fctx.PreparedOut
+	if out == nil {
+		fields := graphql.CollectFields(ec.OperationContext, sel, more3Implementors)
+		out = graphql.NewFieldSet(fields)
+
+		fctx.PreparedFields = fields
+		fctx.PreparedOut = out
+	}
+
+	var invalids uint32
+	for i, field := range fields {
+		switch field.Name {
+		case "__typename":
+			out.Values[i] = graphql.MarshalString("More3")
+		case "id":
+			out.Values[i] = ec._More3_id(ctx, field, obj)
+			if out.Values[i] == graphql.Null {
+				invalids++
+			}
+		case "text":
+			out.Values[i] = ec._More3_text(ctx, field, obj)
+			if out.Values[i] == graphql.Null {
+				invalids++
+			}
+		default:
+			panic("unknown field " + strconv.Quote(field.Name))
+		}
+	}
+
+	out.Prepare(ctx)
+	if !out.PrepareSub(ctx) {
+		return graphql.Null
+	}
+	out.Dispatch(ctx)
+
+	if invalids > 0 {
+		return graphql.Null
+	}
+	return out
+}
+
 var myMutationImplementors = []string{"MyMutation"}
 
 func (ec *executionContext) _MyMutation(ctx context.Context, sel ast.SelectionSet) graphql.Marshaler {
@@ -2225,6 +2426,68 @@ func (ec *executionContext) _MyQuery(ctx context.Context, sel ast.SelectionSet) 
 		}
 	}
 
+	fctx := graphql.GetFieldContext(ctx)
+	fctx.MasterPrepare = true
+	out.Prepare(ctx)
+	for {
+		fctx.MasterPrepareCount = 0
+		_ = !out.PrepareSub(ctx)
+		if fctx.MasterPrepareCount == 0 {
+			break
+		}
+	}
+	fctx.MasterPrepare = false
+	out.Dispatch(ctx)
+	if invalids > 0 {
+		return graphql.Null
+	}
+	return out
+}
+
+var next2Implementors = []string{"Next2"}
+
+func (ec *executionContext) _Next2(ctx context.Context, sel ast.SelectionSet, obj *Next2) graphql.Marshaler {
+	fctx := graphql.GetFieldContext(ctx)
+	fields := fctx.PreparedFields
+	out := fctx.PreparedOut
+	if out == nil {
+		fields := graphql.CollectFields(ec.OperationContext, sel, next2Implementors)
+		out = graphql.NewFieldSet(fields)
+
+		fctx.PreparedFields = fields
+		fctx.PreparedOut = out
+	}
+
+	var invalids uint32
+	for i, field := range fields {
+		switch field.Name {
+		case "__typename":
+			out.Values[i] = graphql.MarshalString("Next2")
+		case "id":
+			out.Values[i] = ec._Next2_id(ctx, field, obj)
+			if out.Values[i] == graphql.Null {
+				atomic.AddUint32(&invalids, 1)
+			}
+		case "text":
+			out.Values[i] = ec._Next2_text(ctx, field, obj)
+			if out.Values[i] == graphql.Null {
+				atomic.AddUint32(&invalids, 1)
+			}
+		case "more":
+			field := field
+			out.Concurrently(i, func() (res graphql.Marshaler) {
+				defer func() {
+					if r := recover(); r != nil {
+						ec.Error(ctx, ec.Recover(ctx, r))
+					}
+				}()
+				res = ec._Next2_more(ctx, field, obj)
+				return res
+			})
+		default:
+			panic("unknown field " + strconv.Quote(field.Name))
+		}
+	}
 	out.Prepare(ctx)
 	if !out.PrepareSub(ctx) {
 		return graphql.Null
@@ -2248,27 +2511,39 @@ func (ec *executionContext) _Sub(ctx context.Context, sel ast.SelectionSet, obj 
 
 		fctx.PreparedFields = fields
 		fctx.PreparedOut = out
-	}
 
-	var invalids uint32
-	for i, field := range fields {
-		switch field.Name {
-		case "__typename":
-			out.Values[i] = graphql.MarshalString("Sub")
-		case "id":
-			out.Values[i] = ec._Sub_id(ctx, field, obj)
-			if out.Values[i] == graphql.Null {
-				invalids++
+		var invalids uint32
+		for i, field := range fields {
+			switch field.Name {
+			case "__typename":
+				out.Values[i] = graphql.MarshalString("Sub")
+			case "id":
+				out.Values[i] = ec._Sub_id(ctx, field, obj)
+				if out.Values[i] == graphql.Null {
+					atomic.AddUint32(&invalids, 1)
+				}
+			case "text":
+				out.Values[i] = ec._Sub_text(ctx, field, obj)
+				if out.Values[i] == graphql.Null {
+					atomic.AddUint32(&invalids, 1)
+				}
+			case "next2":
+				field := field
+				out.Concurrently(i, func() (res graphql.Marshaler) {
+					defer func() {
+						if r := recover(); r != nil {
+							ec.Error(ctx, ec.Recover(ctx, r))
+						}
+					}()
+					res = ec._Sub_next2(ctx, field, obj)
+					return res
+				})
+			default:
+				panic("unknown field " + strconv.Quote(field.Name))
 			}
-		case "text":
-			out.Values[i] = ec._Sub_text(ctx, field, obj)
-			if out.Values[i] == graphql.Null {
-				invalids++
-			}
-		case "sub2":
-			out.Values[i] = ec._Sub_sub2(ctx, field, obj)
-		default:
-			panic("unknown field " + strconv.Quote(field.Name))
+		}
+		if invalids > 0 {
+			return graphql.Null
 		}
 	}
 	out.Prepare(ctx)
@@ -2276,53 +2551,7 @@ func (ec *executionContext) _Sub(ctx context.Context, sel ast.SelectionSet, obj 
 		return graphql.Null
 	}
 	out.Dispatch(ctx)
-	if invalids > 0 {
-		return graphql.Null
-	}
-	return out
-}
 
-var sub2Implementors = []string{"Sub2"}
-
-func (ec *executionContext) _Sub2(ctx context.Context, sel ast.SelectionSet, obj *Sub2) graphql.Marshaler {
-	fctx := graphql.GetFieldContext(ctx)
-	fields := fctx.PreparedFields
-	out := fctx.PreparedOut
-	if out == nil {
-		fields = graphql.CollectFields(ec.OperationContext, sel, sub2Implementors)
-		out = graphql.NewFieldSet(fields)
-
-		fctx.PreparedFields = fields
-		fctx.PreparedOut = out
-	}
-
-	var invalids uint32
-	for i, field := range fields {
-		switch field.Name {
-		case "__typename":
-			out.Values[i] = graphql.MarshalString("Sub2")
-		case "id":
-			out.Values[i] = ec._Sub2_id(ctx, field, obj)
-			if out.Values[i] == graphql.Null {
-				invalids++
-			}
-		case "text":
-			out.Values[i] = ec._Sub2_text(ctx, field, obj)
-			if out.Values[i] == graphql.Null {
-				invalids++
-			}
-		default:
-			panic("unknown field " + strconv.Quote(field.Name))
-		}
-	}
-	out.Prepare(ctx)
-	if !out.PrepareSub(ctx) {
-		return graphql.Null
-	}
-	out.Dispatch(ctx)
-	if invalids > 0 {
-		return graphql.Null
-	}
 	return out
 }
 
@@ -3004,6 +3233,28 @@ func (ec *executionContext) marshalOBoolean2ᚖbool(ctx context.Context, sel ast
 	return ec.marshalOBoolean2bool(ctx, sel, *v)
 }
 
+func (ec *executionContext) marshalOMore32githubᚗcomᚋ99designsᚋgqlgenᚋexampleᚋtodoᚐMore3(ctx context.Context, sel ast.SelectionSet, v More3) graphql.Marshaler {
+	return ec._More3(ctx, sel, &v)
+}
+
+func (ec *executionContext) marshalOMore32ᚖgithubᚗcomᚋ99designsᚋgqlgenᚋexampleᚋtodoᚐMore3(ctx context.Context, sel ast.SelectionSet, v *More3) graphql.Marshaler {
+	if v == nil {
+		return graphql.Null
+	}
+	return ec._More3(ctx, sel, v)
+}
+
+func (ec *executionContext) marshalONext22githubᚗcomᚋ99designsᚋgqlgenᚋexampleᚋtodoᚐNext2(ctx context.Context, sel ast.SelectionSet, v Next2) graphql.Marshaler {
+	return ec._Next2(ctx, sel, &v)
+}
+
+func (ec *executionContext) marshalONext22ᚖgithubᚗcomᚋ99designsᚋgqlgenᚋexampleᚋtodoᚐNext2(ctx context.Context, sel ast.SelectionSet, v *Next2) graphql.Marshaler {
+	if v == nil {
+		return graphql.Null
+	}
+	return ec._Next2(ctx, sel, v)
+}
+
 func (ec *executionContext) unmarshalOString2string(ctx context.Context, v interface{}) (string, error) {
 	return graphql.UnmarshalString(v)
 }
@@ -3025,17 +3276,6 @@ func (ec *executionContext) marshalOString2ᚖstring(ctx context.Context, sel as
 		return graphql.Null
 	}
 	return ec.marshalOString2string(ctx, sel, *v)
-}
-
-func (ec *executionContext) marshalOSub22githubᚗcomᚋ99designsᚋgqlgenᚋexampleᚋtodoᚐSub2(ctx context.Context, sel ast.SelectionSet, v Sub2) graphql.Marshaler {
-	return ec._Sub2(ctx, sel, &v)
-}
-
-func (ec *executionContext) marshalOSub22ᚖgithubᚗcomᚋ99designsᚋgqlgenᚋexampleᚋtodoᚐSub2(ctx context.Context, sel ast.SelectionSet, v *Sub2) graphql.Marshaler {
-	if v == nil {
-		return graphql.Null
-	}
-	return ec._Sub2(ctx, sel, v)
 }
 
 func (ec *executionContext) marshalOSub2githubᚗcomᚋ99designsᚋgqlgenᚋexampleᚋtodoᚐSub(ctx context.Context, sel ast.SelectionSet, v Sub) graphql.Marshaler {

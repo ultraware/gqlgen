@@ -8,15 +8,21 @@ import (
 	"strconv"
 )
 
-type Sub struct {
+type More3 struct {
 	ID   int    `json:"id"`
 	Text string `json:"text"`
-	Sub2 *Sub2  `json:"sub2"`
 }
 
-type Sub2 struct {
+type Next2 struct {
 	ID   int    `json:"id"`
 	Text string `json:"text"`
+	More *More3 `json:"more"`
+}
+
+type Sub struct {
+	ID    int    `json:"id"`
+	Text  string `json:"text"`
+	Next2 *Next2 `json:"next2"`
 }
 
 // Passed to createTodo to create a new todo

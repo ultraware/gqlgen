@@ -5,3 +5,11 @@ models:
     model: # override the default id marshaller to use ints
       - github.com/99designs/gqlgen/graphql.IntID
       - github.com/99designs/gqlgen/graphql.ID
+  Sub:
+    fields:
+      next2:
+        resolver: true # force a resolver to be generated
+  Next2:
+    fields:
+      more:
+        resolver: true # force a resolver to be generated
