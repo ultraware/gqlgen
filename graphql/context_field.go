@@ -36,6 +36,8 @@ type FieldContext struct {
 	PreparedFields []CollectedField
 	PreparedOut    *FieldSet
 
+	IsPreparing bool
+
 	DoPrepare    bool
 	prepareCount int
 	IsPrepared   bool

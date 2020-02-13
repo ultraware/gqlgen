@@ -632,7 +632,7 @@ func (ec *executionContext) _MyQuery_todo(ctx context.Context, field graphql.Col
 	fc := fctx.PreparedStore[field.Field]
 	if fc == nil {
 		fc = &graphql.FieldContext{
-			Object:   "MyQuery",
+			Object:   "_MyQuery_todo",
 			Field:    field,
 			Args:     nil,
 			IsMethod: true,
@@ -1019,7 +1019,7 @@ func (ec *executionContext) _Sub_next2(ctx context.Context, field graphql.Collec
 	fc := fctx.PreparedStore[field.Field]
 	if fc == nil {
 		fc = &graphql.FieldContext{
-			Object:   "Sub",
+			Object:   "_Sub_next2",
 			Field:    field,
 			Args:     nil,
 			IsMethod: true,
@@ -1168,7 +1168,7 @@ func (ec *executionContext) _Todo_sub(ctx context.Context, field graphql.Collect
 	fc := fctx.PreparedStore[field.Field]
 	if fc == nil {
 		fc = &graphql.FieldContext{
-			Object:   "Todo",
+			Object:   "_Todo_sub",
 			Field:    field,
 			Args:     nil,
 			IsMethod: true,
@@ -2294,7 +2294,7 @@ func (ec *executionContext) _More3(ctx context.Context, sel ast.SelectionSet, ob
 	fields := fctx.PreparedFields
 	out := fctx.PreparedOut
 	if out == nil {
-		fields := graphql.CollectFields(ec.OperationContext, sel, more3Implementors)
+		fields = graphql.CollectFields(ec.OperationContext, sel, more3Implementors)
 		out = graphql.NewFieldSet(fields)
 
 		fctx.PreparedFields = fields
@@ -2321,11 +2321,9 @@ func (ec *executionContext) _More3(ctx context.Context, sel ast.SelectionSet, ob
 		}
 	}
 
-	out.Prepare(ctx)
-	if !out.PrepareSub(ctx) {
+	if !out.PreparedDispatch(ctx) {
 		return graphql.Null
 	}
-	out.Dispatch(ctx)
 
 	if invalids > 0 {
 		return graphql.Null
@@ -2428,16 +2426,14 @@ func (ec *executionContext) _MyQuery(ctx context.Context, sel ast.SelectionSet) 
 
 	fctx := graphql.GetFieldContext(ctx)
 	fctx.MasterPrepare = true
-	out.Prepare(ctx)
 	for {
 		fctx.MasterPrepareCount = 0
-		_ = !out.PrepareSub(ctx)
+		_ = out.PreparedDispatch(ctx)
 		if fctx.MasterPrepareCount == 0 {
 			break
 		}
 	}
 	fctx.MasterPrepare = false
-	out.Dispatch(ctx)
 	if invalids > 0 {
 		return graphql.Null
 	}
@@ -2451,7 +2447,7 @@ func (ec *executionContext) _Next2(ctx context.Context, sel ast.SelectionSet, ob
 	fields := fctx.PreparedFields
 	out := fctx.PreparedOut
 	if out == nil {
-		fields := graphql.CollectFields(ec.OperationContext, sel, next2Implementors)
+		fields = graphql.CollectFields(ec.OperationContext, sel, next2Implementors)
 		out = graphql.NewFieldSet(fields)
 
 		fctx.PreparedFields = fields
@@ -2488,11 +2484,10 @@ func (ec *executionContext) _Next2(ctx context.Context, sel ast.SelectionSet, ob
 			panic("unknown field " + strconv.Quote(field.Name))
 		}
 	}
-	out.Prepare(ctx)
-	if !out.PrepareSub(ctx) {
+
+	if !out.PreparedDispatch(ctx) {
 		return graphql.Null
 	}
-	out.Dispatch(ctx)
 	if invalids > 0 {
 		return graphql.Null
 	}
@@ -2546,11 +2541,10 @@ func (ec *executionContext) _Sub(ctx context.Context, sel ast.SelectionSet, obj 
 			return graphql.Null
 		}
 	}
-	out.Prepare(ctx)
-	if !out.PrepareSub(ctx) {
+
+	if !out.PreparedDispatch(ctx) {
 		return graphql.Null
 	}
-	out.Dispatch(ctx)
 
 	return out
 }
@@ -2595,11 +2589,10 @@ func (ec *executionContext) _Todo(ctx context.Context, sel ast.SelectionSet, obj
 			panic("unknown field " + strconv.Quote(field.Name))
 		}
 	}
-	out.Prepare(ctx)
-	if !out.PrepareSub(ctx) {
+
+	if !out.PreparedDispatch(ctx) {
 		return graphql.Null
 	}
-	out.Dispatch(ctx)
 	if invalids > 0 {
 		return graphql.Null
 	}
