@@ -29,7 +29,6 @@ type FieldContext struct {
 	// IsMethod indicates if the resolver is a method
 	IsMethod bool
 
-	//PreparedStorePos int
 	PreparedStore  map[*ast.Field]*FieldContext
 	PreparedStore2 map[int]*FieldContext
 
@@ -37,14 +36,7 @@ type FieldContext struct {
 	PreparedOut    *FieldSet
 
 	IsPreparing bool
-
-	DoPrepare    bool
-	prepareCount int
-	IsPrepared   bool
-
-	DoSubPrepare    bool
-	subPrepareCount int
-	IsSubPrepared   bool
+	IsPrepared  bool
 
 	MasterPrepare      bool
 	MasterPrepareCount int

@@ -6,6 +6,7 @@ import (
 	"bytes"
 	"context"
 	"errors"
+	"fmt"
 	"strconv"
 	"sync"
 	"sync/atomic"
@@ -36,6 +37,7 @@ type Config struct {
 type ResolverRoot interface {
 	MyMutation() MyMutationResolver
 	MyQuery() MyQueryResolver
+	Todo() TodoResolver
 	Next2() Next2Resolver
 	Sub() SubResolver
 }
@@ -85,21 +87,240 @@ type MyMutationResolver interface {
 	UpdateTodo(ctx context.Context, id int, changes map[string]interface{}) (*Todo, error)
 }
 type MyQueryResolver interface {
-	Todo(ctx context.Context, id int) (*Todo, error)
+	Todo(id []int) []*Todo
 	LastTodo(ctx context.Context) (*Todo, error)
-	Todos(ctx context.Context) ([]*Todo, error)
+	Todos() []*Todo
+}
+type TodoResolver interface {
+	Sub(objs []*Todo) []*Sub
 }
 type Next2Resolver interface {
-	More(ctx context.Context, obj *Next2) (*More3, error)
+	More(objs []*Next2) []*More3
 }
 type SubResolver interface {
-	Next2(ctx context.Context, obj *Sub) (*Next2, error)
+	Next2(objs []*Sub) []*Next2
+}
+
+type TodosCache struct {
+	cache
+}
+
+type todosLoadFunc func() []*Todo
+
+type todosWrapper struct {
+	todos []*Todo
+}
+
+func (c *TodosCache) getTodos(ctx context.Context, loader todosLoadFunc) []*Todo {
+	var dummy struct{}
+	result := c.cache.getItem(ctx, dummy, func(keys []interface{}) []interface{} {
+		todos := loader()
+		return []interface{}{todosWrapper{todos: todos}}
+	})
+
+	if result == nil {
+		return nil
+	}
+	if todo, ok := result.(todosWrapper); ok {
+		return todo.todos
+	}
+	return nil
+}
+
+type TodoCache struct {
+	cache
+}
+
+type todoLoadFunc func(keys []int) []*Todo
+
+func (c *TodoCache) getTodo(ctx context.Context, id int, loader todoLoadFunc) *Todo {
+	result := c.cache.getItem(ctx, id, func(keys []interface{}) []interface{} {
+		todos := []int{}
+		for _, k := range keys {
+			if t, ok := k.(int); ok {
+				todos = append(todos, t)
+			}
+		}
+		subs := loader(todos)
+		results := []interface{}{}
+		for _, s := range subs {
+			results = append(results, s)
+		}
+		return results
+	})
+
+	if result == nil {
+		return nil
+	}
+	if todo, ok := result.(*Todo); ok {
+		return todo
+	}
+	return nil
+}
+
+type SubCache struct {
+	cache
+}
+
+type subLoadFunc func(keys []*Todo) []*Sub
+
+func (c *SubCache) getSub(ctx context.Context, id *Todo, loader subLoadFunc) *Sub {
+	result := c.cache.getItem(ctx, id, func(keys []interface{}) []interface{} {
+		todos := []*Todo{}
+		for _, k := range keys {
+			if t, ok := k.(*Todo); ok {
+				todos = append(todos, t)
+			}
+		}
+		subs := loader(todos)
+		results := []interface{}{}
+		for _, s := range subs {
+			results = append(results, s)
+		}
+		return results
+	})
+
+	if result == nil {
+		return nil
+	}
+	if sub, ok := result.(*Sub); ok {
+		return sub
+	}
+	return nil
+}
+
+type MoreCache struct {
+	cache
+}
+
+type moreLoadFunc func(keys []*Next2) []*More3
+
+func (c *MoreCache) getMore(ctx context.Context, id *Next2, loader moreLoadFunc) *More3 {
+	result := c.cache.getItem(ctx, id, func(keys []interface{}) []interface{} {
+		nexts := []*Next2{}
+		for _, k := range keys {
+			if n, ok := k.(*Next2); ok {
+				nexts = append(nexts, n)
+			}
+		}
+		mores := loader(nexts)
+		results := []interface{}{}
+		for _, m := range mores {
+			results = append(results, m)
+		}
+		return results
+	})
+
+	if result == nil {
+		return nil
+	}
+	if more, ok := result.(*More3); ok {
+		return more
+	}
+	return nil
+}
+
+type NextCache struct {
+	cache
+}
+
+type nextLoadFunc func(keys []*Sub) []*Next2
+
+func (c *NextCache) getNext(ctx context.Context, id *Sub, loader nextLoadFunc) *Next2 {
+	result := c.cache.getItem(ctx, id, func(keys []interface{}) []interface{} {
+		objs := []*Sub{}
+		for _, k := range keys {
+			if o, ok := k.(*Sub); ok {
+				objs = append(objs, o)
+			}
+		}
+		results := loader(objs)
+		returns := []interface{}{}
+		for _, r := range results {
+			returns = append(returns, r)
+		}
+		return returns
+	})
+
+	if result == nil {
+		return nil
+	}
+	if next, ok := result.(*Next2); ok {
+		return next
+	}
+	return nil
 }
 
 type executableSchema struct {
 	resolvers  ResolverRoot
 	directives DirectiveRoot
 	complexity ComplexityRoot
+
+	todosCache TodosCache
+	todoCache  TodoCache
+	subCache   SubCache
+	nextCache  NextCache
+	moreCache  MoreCache
+}
+
+func (ec *executableSchema) Todos(ctx context.Context) ([]*Todo, error) {
+	fmt.Print(`get all Todos `)
+	result := ec.todosCache.getTodos(ctx, ec.resolvers.MyQuery().Todos)
+
+	if result != nil {
+		fmt.Println(`(fetch)`)
+		return result, nil
+	}
+	fmt.Println(`(prepared)`)
+	return nil, nil
+}
+
+func (ec *executableSchema) Todo(ctx context.Context, id int) (*Todo, error) {
+	fmt.Print(`get Todo: `, id, ` `)
+	result := ec.todoCache.getTodo(ctx, id, ec.resolvers.MyQuery().Todo)
+
+	if result != nil {
+		fmt.Println(`(fetch)`)
+		return result, nil
+	}
+	fmt.Println(`(prepared)`)
+	return nil, nil
+}
+
+func (ec *executableSchema) Sub(ctx context.Context, obj *Todo) (*Sub, error) {
+	fmt.Print(`get Sub of Todo: `, obj.ID, ` `)
+	result := ec.subCache.getSub(ctx, obj, ec.resolvers.Todo().Sub)
+
+	if result != nil {
+		fmt.Println(`(fetch)`)
+		return result, nil
+	}
+	fmt.Println(`(prepared)`)
+	return nil, nil
+}
+
+func (ec *executableSchema) More(ctx context.Context, obj *Next2) (*More3, error) {
+	fmt.Print(`get More of Next: `, obj.ID, ` `)
+	result := ec.moreCache.getMore(ctx, obj, ec.resolvers.Next2().More)
+
+	if result != nil {
+		fmt.Println(`(fetch)`)
+		return result, nil
+	}
+	fmt.Println(`(prepared)`)
+	return nil, nil
+}
+
+func (ec *executableSchema) Next2(ctx context.Context, obj *Sub) (*Next2, error) {
+	fmt.Print(`get Next of Sub: `, obj.ID, ` `)
+	result := ec.nextCache.getNext(ctx, obj, ec.resolvers.Sub().Next2)
+
+	if result != nil {
+		fmt.Println(`(fetch)`)
+		return result, nil
+	}
+	fmt.Println(`(prepared)`)
+	return nil, nil
 }
 
 func (e *executableSchema) Schema() *ast.Schema {
@@ -657,7 +878,7 @@ func (ec *executionContext) _MyQuery_todo(ctx context.Context, field graphql.Col
 	fc.Args = args
 	resTmp, err := ec.ResolverMiddleware(ctx, func(rctx context.Context) (interface{}, error) {
 		ctx = rctx // use context from middleware stack in children
-		return ec.resolvers.MyQuery().Todo(rctx, args["id"].(int))
+		return ec.Todo(rctx, args["id"].(int))
 	})
 	if err != nil {
 		ec.Error(ctx, err)
@@ -735,7 +956,7 @@ func (ec *executionContext) _MyQuery_todos(ctx context.Context, field graphql.Co
 
 	resTmp, err := ec.ResolverMiddleware(ctx, func(rctx context.Context) (interface{}, error) {
 		ctx = rctx // use context from middleware stack in children
-		return ec.resolvers.MyQuery().Todos(rctx)
+		return ec.Todos(rctx)
 	})
 	if err != nil {
 		ec.Error(ctx, err)
@@ -922,7 +1143,8 @@ func (ec *executionContext) _Next2_more(ctx context.Context, field graphql.Colle
 
 	resTmp, err := ec.ResolverMiddleware(ctx, func(rctx context.Context) (interface{}, error) {
 		ctx = rctx // use context from middleware stack in children
-		return ec.resolvers.Next2().More(rctx, obj)
+		//return ec.resolvers.Next2().More(rctx, obj)
+		return ec.More(rctx, obj)
 	})
 	if err != nil {
 		ec.Error(ctx, err)
@@ -1037,7 +1259,7 @@ func (ec *executionContext) _Sub_next2(ctx context.Context, field graphql.Collec
 
 	resTmp, err := ec.ResolverMiddleware(ctx, func(rctx context.Context) (interface{}, error) {
 		ctx = rctx // use context from middleware stack in children
-		return ec.resolvers.Sub().Next2(rctx, obj)
+		return ec.Next2(rctx, obj)
 	})
 	if err != nil {
 		ec.Error(ctx, err)
@@ -1186,7 +1408,9 @@ func (ec *executionContext) _Todo_sub(ctx context.Context, field graphql.Collect
 
 	resTmp, err := ec.ResolverMiddleware(ctx, func(rctx context.Context) (interface{}, error) {
 		ctx = rctx // use context from middleware stack in children
-		return obj.Sub, nil
+		//return obj.Sub, nil
+		return ec.Sub(rctx, obj)
+
 	})
 	if err != nil {
 		ec.Error(ctx, err)
@@ -2584,7 +2808,17 @@ func (ec *executionContext) _Todo(ctx context.Context, sel ast.SelectionSet, obj
 				invalids++
 			}
 		case "sub":
-			out.Values[i] = ec._Todo_sub(ctx, field, obj)
+			field := field
+			out.Concurrently(i, func() (res graphql.Marshaler) {
+				defer func() {
+					if r := recover(); r != nil {
+						ec.Error(ctx, ec.Recover(ctx, r))
+					}
+				}()
+				res = ec._Todo_sub(ctx, field, obj)
+				return res
+			})
+			//out.Values[i] = ec._Todo_sub(ctx, field, obj)
 		default:
 			panic("unknown field " + strconv.Quote(field.Name))
 		}

@@ -8,7 +8,6 @@ import (
 	"fmt"
 	"time"
 
-	"github.com/99designs/gqlgen/graphql"
 	"github.com/mitchellh/mapstructure"
 )
 
@@ -64,72 +63,11 @@ func New() Config {
 	return c
 }
 
-type cache struct {
-	requested_ids map[interface{}]struct{}
-	storage       map[interface{}]interface{}
-}
-
-type loadFunc func(keys []interface{}) []interface{}
-
-func (c *cache) getItem(ctx context.Context, id interface{}, loader loadFunc) interface{} {
-	//preparing?
-	fctx := graphql.GetFieldContext(ctx)
-	if fctx.DoPrepare || (fctx.Parent != nil && fctx.Parent.DoPrepare) ||
-		fctx.IsPreparing || (fctx.Parent != nil && fctx.Parent.IsPreparing) {
-		if c.requested_ids == nil {
-			c.requested_ids = make(map[interface{}]struct{})
-		}
-		if _, ok := c.requested_ids[id]; !ok {
-			var empty struct{}
-			c.requested_ids[id] = empty
-		}
-
-		var dummy struct{}
-		return dummy
-	}
-
-	if c.storage == nil {
-		c.storage = make(map[interface{}]interface{})
-	}
-
-	//loading
-	result := c.storage[id]
-	if result == nil {
-		//collect requested (and missing) id's
-		var ids []interface{}
-		for id := range c.requested_ids {
-			if c.storage[id] == nil {
-				ids = append(ids, id)
-			}
-		}
-		if len(ids) == 0 {
-			ids = append(ids, id)
-		}
-		//load missing id's
-		values := loader(ids)
-		//store result
-		for i, id := range ids {
-			c.storage[id] = values[i]
-		}
-		//clear
-		c.requested_ids = make(map[interface{}]struct{})
-		//load again (from cache now)
-		result = c.storage[id]
-	}
-	return result
-}
-
 type resolvers struct {
 	todos []*Todo
 	nexts []*Next2
 
 	lastID int
-
-	tokenCache    cache
-	allTokenCache cache
-	subCache      cache
-	nextCache     cache
-	moreCache     cache
 }
 
 func (r *resolvers) MyQuery() MyQueryResolver {
@@ -138,6 +76,10 @@ func (r *resolvers) MyQuery() MyQueryResolver {
 
 func (r *resolvers) MyMutation() MyMutationResolver {
 	return (*MutationResolver)(r)
+}
+
+func (r *resolvers) Todo() TodoResolver {
+	return (*QueryResolver)(r)
 }
 
 func (r *resolvers) Next2() Next2Resolver {
@@ -150,24 +92,15 @@ func (r *resolvers) Sub() SubResolver {
 
 type QueryResolver resolvers
 
-func (r *QueryResolver) getTodos(ids []interface{}) []interface{} {
+func (r *QueryResolver) Todo(ids []int) []*Todo {
 	fmt.Print(`DB.getTodos: `, ids, ` `)
 	time.Sleep(220 * time.Millisecond)
 
-	var result []interface{}
+	var result []*Todo
 	for _, key := range ids {
-		id, ok := key.(int)
-		if !ok {
-			panic("wrong id")
-		}
-
-		if id == 666 {
-			panic("critical failure")
-		}
-
 		found := false
 		for _, todo := range r.todos {
-			if todo.ID == id {
+			if todo.ID == key {
 				result = append(result, todo)
 				found = true
 				break
@@ -181,47 +114,42 @@ func (r *QueryResolver) getTodos(ids []interface{}) []interface{} {
 	return result
 }
 
-func (r *QueryResolver) getSubs(ids []interface{}) []interface{} {
-	fmt.Print(`DB.getSubs: `, ids, ` `)
+func (r *QueryResolver) Todos() []*Todo {
+	fmt.Print(`DB.getAllTodos `)
+	time.Sleep(220 * time.Millisecond)
+	return r.todos
+}
+
+func (r *QueryResolver) Sub(objs []*Todo) []*Sub {
+	fmt.Print(`DB.getSubs: `, objs, ` `)
 	time.Sleep(110 * time.Millisecond)
 
-	var result []interface{}
-	for _, key := range ids {
-		id, ok := key.(int)
-		if !ok {
-			panic("wrong id")
-		}
-
+	results := []*Sub{}
+	for _, key := range objs {
 		found := false
 		for _, todo := range r.todos {
-			if todo.ID == id {
-				result = append(result, todo.Sub)
+			if todo.ID == key.ID {
+				results = append(results, todo.Sub)
 				found = true
 				break
 			}
 		}
 		if !found {
-			result = append(result, nil)
+			results = append(results, nil)
 		}
 	}
-
-	return result
+	return results
 }
 
-func (r *QueryResolver) getNext(ids []interface{}) []interface{} {
-	fmt.Print(`DB.getNext: `, ids, ` `)
+func (r *QueryResolver) Next2(objs []*Sub) []*Next2 {
+	fmt.Print(`DB.getNext: `, objs, ` `)
 	time.Sleep(110 * time.Millisecond)
 
-	var result []interface{}
-	for _, key := range ids {
-		id, ok := key.(int)
-		if !ok {
-			panic("wrong id")
-		}
-
+	result := []*Next2{}
+	for _, key := range objs {
 		found := false
 		for _, next := range r.nexts {
-			if next.ID == id {
+			if next.ID == key.ID {
 				result = append(result, next)
 				found = true
 				break
@@ -234,20 +162,15 @@ func (r *QueryResolver) getNext(ids []interface{}) []interface{} {
 	return result
 }
 
-func (r *QueryResolver) getMore(ids []interface{}) []interface{} {
-	fmt.Print(`DB.getMore: `, ids, ` `)
+func (r *QueryResolver) More(objs []*Next2) []*More3 {
+	fmt.Print(`DB.getMore: `, objs, ` `)
 	time.Sleep(110 * time.Millisecond)
 
-	var result []interface{}
-	for _, key := range ids {
-		id, ok := key.(int)
-		if !ok {
-			panic("wrong id")
-		}
-
+	result := []*More3{}
+	for _, key := range objs {
 		found := false
 		for _, next := range r.nexts {
-			if next.ID == id {
+			if next.ID == key.ID {
 				result = append(result, next.More)
 				found = true
 				break
@@ -260,85 +183,11 @@ func (r *QueryResolver) getMore(ids []interface{}) []interface{} {
 	return result
 }
 
-type todosWrapper struct {
-	todos []*Todo
-}
-
-func (r *QueryResolver) getAllTodos(ids []interface{}) []interface{} {
-	fmt.Print(`DB.getAllTodos `)
-	time.Sleep(220 * time.Millisecond)
-	return []interface{}{todosWrapper{todos: r.todos}}
-}
-
-func (r *QueryResolver) Todo(ctx context.Context, id int) (*Todo, error) {
-	fmt.Print(`get Todo: `, id, ` `)
-	result := r.tokenCache.getItem(ctx, id, r.getTodos)
-
-	if result == nil {
-		return nil, errors.New("not found")
-	}
-	if todo, ok := result.(*Todo); ok {
-		fmt.Println(`(fetch)`)
-		return todo, nil
-	}
-	fmt.Println(`(prepared)`)
-	return nil, nil
-}
-
 func (r *QueryResolver) LastTodo(ctx context.Context) (*Todo, error) {
 	if len(r.todos) == 0 {
 		return nil, errors.New("not found")
 	}
 	return r.todos[len(r.todos)-1], nil
-}
-
-func (r *QueryResolver) Todos(ctx context.Context) ([]*Todo, error) {
-	fmt.Print(`get Todos `)
-	var dummy struct{}
-	result := r.allTokenCache.getItem(ctx, dummy, r.getAllTodos)
-
-	if todo, ok := result.(todosWrapper); ok {
-		fmt.Println(`(fetch)`)
-		return todo.todos, nil
-	}
-	fmt.Println(`(prepared)`)
-	return nil, nil
-}
-
-func (r *QueryResolver) Sub(ctx context.Context, obj *Todo) (*Sub, error) {
-	fmt.Print(`get Sub of Todo: `, obj.ID, ` `)
-	result := r.subCache.getItem(ctx, obj.ID, r.getSubs)
-
-	if todo, ok := result.(*Sub); ok {
-		fmt.Println(`(fetch)`)
-		return todo, nil
-	}
-	fmt.Println(`(prepared)`)
-	return nil, nil
-}
-
-func (r *QueryResolver) More(ctx context.Context, obj *Next2) (*More3, error) {
-	fmt.Print(`get More of Next2: `, obj.ID, ` `)
-	result := r.moreCache.getItem(ctx, obj.ID, r.getMore)
-
-	if more, ok := result.(*More3); ok {
-		fmt.Println(`(fetch)`)
-		return more, nil
-	}
-	fmt.Println(`(prepared)`)
-	return nil, nil
-}
-
-func (r *QueryResolver) Next2(ctx context.Context, obj *Sub) (*Next2, error) {
-	fmt.Print(`get Next2 of Sub: `, obj.ID, ` `)
-	result := r.nextCache.getItem(ctx, obj.ID, r.getNext)
-
-	if next2, ok := result.(*Next2); ok {
-		fmt.Println(`(fetch)`)
-		return next2, nil
-	}
-	fmt.Println(`(prepared)`)
-	return nil, nil
 }
 
 type MutationResolver resolvers

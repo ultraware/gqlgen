@@ -1,6 +1,9 @@
 models:
   Todo:
     model: github.com/99designs/gqlgen/example/todo.Todo
+    fields:
+      sub:
+        resolver: true # force a resolver to be generated  
   ID:
     model: # override the default id marshaller to use ints
       - github.com/99designs/gqlgen/graphql.IntID
