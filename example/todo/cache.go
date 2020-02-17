@@ -16,8 +16,7 @@ type loadFunc func(keys []interface{}) []interface{}
 func (c *cache) getItem(ctx context.Context, id interface{}, loader loadFunc) interface{} {
 	//preparing?
 	fctx := graphql.GetFieldContext(ctx)
-	if fctx.DoPrepare || (fctx.Parent != nil && fctx.Parent.DoPrepare) ||
-		fctx.IsPreparing || (fctx.Parent != nil && fctx.Parent.IsPreparing) {
+	if fctx.IsPreparing || (fctx.Parent != nil && fctx.Parent.IsPreparing) {
 		if c.requested_ids == nil {
 			c.requested_ids = make(map[interface{}]struct{})
 		}

@@ -268,7 +268,7 @@ func (ec *executableSchema) Todos(ctx context.Context) ([]*Todo, error) {
 	result := ec.todosCache.getTodos(ctx, ec.resolvers.MyQuery().Todos)
 
 	if result != nil {
-		fmt.Println(`(fetch)`)
+		fmt.Println(` (fetch)`)
 		return result, nil
 	}
 	fmt.Println(`(prepared)`)
@@ -280,7 +280,7 @@ func (ec *executableSchema) Todo(ctx context.Context, id int) (*Todo, error) {
 	result := ec.todoCache.getTodo(ctx, id, ec.resolvers.MyQuery().Todo)
 
 	if result != nil {
-		fmt.Println(`(fetch)`)
+		fmt.Println(` (fetch)`)
 		return result, nil
 	}
 	fmt.Println(`(prepared)`)
@@ -292,7 +292,7 @@ func (ec *executableSchema) Sub(ctx context.Context, obj *Todo) (*Sub, error) {
 	result := ec.subCache.getSub(ctx, obj, ec.resolvers.Todo().Sub)
 
 	if result != nil {
-		fmt.Println(`(fetch)`)
+		fmt.Println(` (fetch)`)
 		return result, nil
 	}
 	fmt.Println(`(prepared)`)
@@ -304,7 +304,7 @@ func (ec *executableSchema) More(ctx context.Context, obj *Next2) (*More3, error
 	result := ec.moreCache.getMore(ctx, obj, ec.resolvers.Next2().More)
 
 	if result != nil {
-		fmt.Println(`(fetch)`)
+		fmt.Println(` (fetch)`)
 		return result, nil
 	}
 	fmt.Println(`(prepared)`)
@@ -316,7 +316,7 @@ func (ec *executableSchema) Next2(ctx context.Context, obj *Sub) (*Next2, error)
 	result := ec.nextCache.getNext(ctx, obj, ec.resolvers.Sub().Next2)
 
 	if result != nil {
-		fmt.Println(`(fetch)`)
+		fmt.Println(` (fetch)`)
 		return result, nil
 	}
 	fmt.Println(`(prepared)`)
@@ -938,7 +938,7 @@ func (ec *executionContext) _MyQuery_todos(ctx context.Context, field graphql.Co
 	fc := fctx.PreparedStore[field.Field]
 	if fc == nil {
 		fc = &graphql.FieldContext{
-			Object:   "MyQuery",
+			Object:   "_MyQuery_todos",
 			Field:    field,
 			Args:     nil,
 			IsMethod: true,
@@ -1125,7 +1125,7 @@ func (ec *executionContext) _Next2_more(ctx context.Context, field graphql.Colle
 	fc := fctx.PreparedStore[field.Field]
 	if fc == nil {
 		fc = &graphql.FieldContext{
-			Object:   "Next2",
+			Object:   "_Next2_more",
 			Field:    field,
 			Args:     nil,
 			IsMethod: true,
@@ -2523,25 +2523,28 @@ func (ec *executionContext) _More3(ctx context.Context, sel ast.SelectionSet, ob
 
 		fctx.PreparedFields = fields
 		fctx.PreparedOut = out
-	}
 
-	var invalids uint32
-	for i, field := range fields {
-		switch field.Name {
-		case "__typename":
-			out.Values[i] = graphql.MarshalString("More3")
-		case "id":
-			out.Values[i] = ec._More3_id(ctx, field, obj)
-			if out.Values[i] == graphql.Null {
-				invalids++
+		var invalids uint32
+		for i, field := range fields {
+			switch field.Name {
+			case "__typename":
+				out.Values[i] = graphql.MarshalString("More3")
+			case "id":
+				out.Values[i] = ec._More3_id(ctx, field, obj)
+				if out.Values[i] == graphql.Null {
+					invalids++
+				}
+			case "text":
+				out.Values[i] = ec._More3_text(ctx, field, obj)
+				if out.Values[i] == graphql.Null {
+					invalids++
+				}
+			default:
+				panic("unknown field " + strconv.Quote(field.Name))
 			}
-		case "text":
-			out.Values[i] = ec._More3_text(ctx, field, obj)
-			if out.Values[i] == graphql.Null {
-				invalids++
-			}
-		default:
-			panic("unknown field " + strconv.Quote(field.Name))
+		}
+		if invalids > 0 {
+			return graphql.Null
 		}
 	}
 
@@ -2549,9 +2552,6 @@ func (ec *executionContext) _More3(ctx context.Context, sel ast.SelectionSet, ob
 		return graphql.Null
 	}
 
-	if invalids > 0 {
-		return graphql.Null
-	}
 	return out
 }
 
@@ -2676,43 +2676,43 @@ func (ec *executionContext) _Next2(ctx context.Context, sel ast.SelectionSet, ob
 
 		fctx.PreparedFields = fields
 		fctx.PreparedOut = out
-	}
 
-	var invalids uint32
-	for i, field := range fields {
-		switch field.Name {
-		case "__typename":
-			out.Values[i] = graphql.MarshalString("Next2")
-		case "id":
-			out.Values[i] = ec._Next2_id(ctx, field, obj)
-			if out.Values[i] == graphql.Null {
-				atomic.AddUint32(&invalids, 1)
+		var invalids uint32
+		for i, field := range fields {
+			switch field.Name {
+			case "__typename":
+				out.Values[i] = graphql.MarshalString("Next2")
+			case "id":
+				out.Values[i] = ec._Next2_id(ctx, field, obj)
+				if out.Values[i] == graphql.Null {
+					atomic.AddUint32(&invalids, 1)
+				}
+			case "text":
+				out.Values[i] = ec._Next2_text(ctx, field, obj)
+				if out.Values[i] == graphql.Null {
+					atomic.AddUint32(&invalids, 1)
+				}
+			case "more":
+				field := field
+				out.Concurrently(i, func() (res graphql.Marshaler) {
+					defer func() {
+						if r := recover(); r != nil {
+							ec.Error(ctx, ec.Recover(ctx, r))
+						}
+					}()
+					res = ec._Next2_more(ctx, field, obj)
+					return res
+				})
+			default:
+				panic("unknown field " + strconv.Quote(field.Name))
 			}
-		case "text":
-			out.Values[i] = ec._Next2_text(ctx, field, obj)
-			if out.Values[i] == graphql.Null {
-				atomic.AddUint32(&invalids, 1)
-			}
-		case "more":
-			field := field
-			out.Concurrently(i, func() (res graphql.Marshaler) {
-				defer func() {
-					if r := recover(); r != nil {
-						ec.Error(ctx, ec.Recover(ctx, r))
-					}
-				}()
-				res = ec._Next2_more(ctx, field, obj)
-				return res
-			})
-		default:
-			panic("unknown field " + strconv.Quote(field.Name))
+		}
+		if invalids > 0 {
+			return graphql.Null
 		}
 	}
 
 	if !out.PreparedDispatch(ctx) {
-		return graphql.Null
-	}
-	if invalids > 0 {
 		return graphql.Null
 	}
 	return out
@@ -2785,49 +2785,49 @@ func (ec *executionContext) _Todo(ctx context.Context, sel ast.SelectionSet, obj
 
 		fctx.PreparedFields = fields
 		fctx.PreparedOut = out
-	}
 
-	var invalids uint32
-	for i, field := range fields {
-		switch field.Name {
-		case "__typename":
-			out.Values[i] = graphql.MarshalString("Todo")
-		case "id":
-			out.Values[i] = ec._Todo_id(ctx, field, obj)
-			if out.Values[i] == graphql.Null {
-				invalids++
+		var invalids uint32
+		for i, field := range fields {
+			switch field.Name {
+			case "__typename":
+				out.Values[i] = graphql.MarshalString("Todo")
+			case "id":
+				out.Values[i] = ec._Todo_id(ctx, field, obj)
+				if out.Values[i] == graphql.Null {
+					invalids++
+				}
+			case "text":
+				out.Values[i] = ec._Todo_text(ctx, field, obj)
+				if out.Values[i] == graphql.Null {
+					invalids++
+				}
+			case "done":
+				out.Values[i] = ec._Todo_done(ctx, field, obj)
+				if out.Values[i] == graphql.Null {
+					invalids++
+				}
+			case "sub":
+				field := field
+				out.Concurrently(i, func() (res graphql.Marshaler) {
+					defer func() {
+						if r := recover(); r != nil {
+							ec.Error(ctx, ec.Recover(ctx, r))
+						}
+					}()
+					res = ec._Todo_sub(ctx, field, obj)
+					return res
+				})
+				//out.Values[i] = ec._Todo_sub(ctx, field, obj)
+			default:
+				panic("unknown field " + strconv.Quote(field.Name))
 			}
-		case "text":
-			out.Values[i] = ec._Todo_text(ctx, field, obj)
-			if out.Values[i] == graphql.Null {
-				invalids++
-			}
-		case "done":
-			out.Values[i] = ec._Todo_done(ctx, field, obj)
-			if out.Values[i] == graphql.Null {
-				invalids++
-			}
-		case "sub":
-			field := field
-			out.Concurrently(i, func() (res graphql.Marshaler) {
-				defer func() {
-					if r := recover(); r != nil {
-						ec.Error(ctx, ec.Recover(ctx, r))
-					}
-				}()
-				res = ec._Todo_sub(ctx, field, obj)
-				return res
-			})
-			//out.Values[i] = ec._Todo_sub(ctx, field, obj)
-		default:
-			panic("unknown field " + strconv.Quote(field.Name))
+		}
+		if invalids > 0 {
+			return graphql.Null
 		}
 	}
 
 	if !out.PreparedDispatch(ctx) {
-		return graphql.Null
-	}
-	if invalids > 0 {
 		return graphql.Null
 	}
 	return out

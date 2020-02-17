@@ -121,7 +121,10 @@ func (r *QueryResolver) Todos() []*Todo {
 }
 
 func (r *QueryResolver) Sub(objs []*Todo) []*Sub {
-	fmt.Print(`DB.getSubs: `, objs, ` `)
+	fmt.Print(`DB.getSubs: `)
+	for _, o := range objs {
+		fmt.Print(o.ID, `, `)
+	}
 	time.Sleep(110 * time.Millisecond)
 
 	results := []*Sub{}
@@ -142,7 +145,10 @@ func (r *QueryResolver) Sub(objs []*Todo) []*Sub {
 }
 
 func (r *QueryResolver) Next2(objs []*Sub) []*Next2 {
-	fmt.Print(`DB.getNext: `, objs, ` `)
+	fmt.Print(`DB.getNext: `)
+	for _, o := range objs {
+		fmt.Print(o.ID, `, `)
+	}
 	time.Sleep(110 * time.Millisecond)
 
 	result := []*Next2{}
@@ -163,7 +169,10 @@ func (r *QueryResolver) Next2(objs []*Sub) []*Next2 {
 }
 
 func (r *QueryResolver) More(objs []*Next2) []*More3 {
-	fmt.Print(`DB.getMore: `, objs, ` `)
+	fmt.Print(`DB.getMore: `)
+	for _, o := range objs {
+		fmt.Print(o.ID, `, `)
+	}
 	time.Sleep(110 * time.Millisecond)
 
 	result := []*More3{}

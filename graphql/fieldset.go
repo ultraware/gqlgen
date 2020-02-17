@@ -81,17 +81,6 @@ func (m *FieldSet) PreparedDispatch(ctx context.Context) bool {
 }
 
 func (m *FieldSet) Dispatch(ctx context.Context) {
-	if len(m.delayed) > 1 {
-		fctx := GetFieldContext(ctx)
-		if fctx != nil && fctx.prepareCount == len(m.delayed) {
-			for _, d := range m.delayed[1:] {
-				m.Values[d.i] = d.f()
-			}
-			m.Values[m.delayed[0].i] = m.delayed[0].f()
-			return
-		}
-	}
-
 	if len(m.delayed) == 1 {
 		// only one concurrent task, no need to spawn a goroutine or deal create waitgroups
 		d := m.delayed[0]
