@@ -29,8 +29,8 @@ type FieldContext struct {
 	// IsMethod indicates if the resolver is a method
 	IsMethod bool
 
-	PreparedStore  map[*ast.Field]*FieldContext
-	PreparedStore2 map[int]*FieldContext
+	PreparedStore     map[*ast.Field]*FieldContext
+	PreparedListStore map[int]*FieldContext
 
 	PreparedFields []CollectedField
 	PreparedOut    *FieldSet
@@ -80,6 +80,26 @@ func GetResolverContext(ctx context.Context) *ResolverContext {
 
 func GetFieldContext(ctx context.Context) *FieldContext {
 	if val, ok := ctx.Value(resolverCtx).(*FieldContext); ok {
+		return val
+	}
+	return nil
+}
+
+func GetPreparedFieldContext(ctx context.Context) *FieldContext {
+	if val, ok := ctx.Value(resolverCtx).(*FieldContext); ok {
+		if val.PreparedStore == nil {
+			val.PreparedStore = map[*ast.Field]*FieldContext{}
+		}
+		return val
+	}
+	return nil
+}
+
+func GetPreparedFieldListContext(ctx context.Context) *FieldContext {
+	if val, ok := ctx.Value(resolverCtx).(*FieldContext); ok {
+		if val.PreparedListStore == nil {
+			val.PreparedListStore = map[int]*FieldContext{}
+		}
 		return val
 	}
 	return nil

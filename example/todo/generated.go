@@ -846,10 +846,7 @@ func (ec *executionContext) _MyQuery_todo(ctx context.Context, field graphql.Col
 		}
 	}()
 
-	fctx := graphql.GetFieldContext(ctx)
-	if fctx.PreparedStore == nil {
-		fctx.PreparedStore = map[*ast.Field]*graphql.FieldContext{}
-	}
+	fctx := graphql.GetPreparedFieldContext(ctx)
 	fc := fctx.PreparedStore[field.Field]
 	if fc == nil {
 		fc = &graphql.FieldContext{
@@ -931,10 +928,7 @@ func (ec *executionContext) _MyQuery_todos(ctx context.Context, field graphql.Co
 		}
 	}()
 
-	fctx := graphql.GetFieldContext(ctx)
-	if fctx.PreparedStore == nil {
-		fctx.PreparedStore = map[*ast.Field]*graphql.FieldContext{}
-	}
+	fctx := graphql.GetPreparedFieldContext(ctx)
 	fc := fctx.PreparedStore[field.Field]
 	if fc == nil {
 		fc = &graphql.FieldContext{
@@ -1118,10 +1112,7 @@ func (ec *executionContext) _Next2_more(ctx context.Context, field graphql.Colle
 		}
 	}()
 
-	fctx := graphql.GetFieldContext(ctx)
-	if fctx.PreparedStore == nil {
-		fctx.PreparedStore = map[*ast.Field]*graphql.FieldContext{}
-	}
+	fctx := graphql.GetPreparedFieldContext(ctx)
 	fc := fctx.PreparedStore[field.Field]
 	if fc == nil {
 		fc = &graphql.FieldContext{
@@ -1234,10 +1225,7 @@ func (ec *executionContext) _Sub_next2(ctx context.Context, field graphql.Collec
 		}
 	}()
 
-	fctx := graphql.GetFieldContext(ctx)
-	if fctx.PreparedStore == nil {
-		fctx.PreparedStore = map[*ast.Field]*graphql.FieldContext{}
-	}
+	fctx := graphql.GetPreparedFieldContext(ctx)
 	fc := fctx.PreparedStore[field.Field]
 	if fc == nil {
 		fc = &graphql.FieldContext{
@@ -1383,10 +1371,7 @@ func (ec *executionContext) _Todo_sub(ctx context.Context, field graphql.Collect
 		}
 	}()
 
-	fctx := graphql.GetFieldContext(ctx)
-	if fctx.PreparedStore == nil {
-		fctx.PreparedStore = map[*ast.Field]*graphql.FieldContext{}
-	}
+	fctx := graphql.GetPreparedFieldContext(ctx)
 	fc := fctx.PreparedStore[field.Field]
 	if fc == nil {
 		fc = &graphql.FieldContext{
@@ -3156,21 +3141,17 @@ func (ec *executionContext) marshalNTodo2ᚕᚖgithubᚗcomᚋ99designsᚋgqlgen
 		wg.Add(len(v))
 	}
 
-	fctx := graphql.GetFieldContext(ctx)
-
+	fctx := graphql.GetPreparedFieldListContext(ctx)
 	for i := range v {
 		i := i
 
-		if fctx.PreparedStore2 == nil {
-			fctx.PreparedStore2 = map[int]*graphql.FieldContext{}
-		}
-		fc := fctx.PreparedStore2[i]
+		fc := fctx.PreparedListStore[i]
 		if fc == nil {
 			fc = &graphql.FieldContext{
 				Index:  &i,
 				Result: &v[i],
 			}
-			fctx.PreparedStore2[i] = fc
+			fctx.PreparedListStore[i] = fc
 		}
 
 		ctx := graphql.WithFieldContext(ctx, fc)
