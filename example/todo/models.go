@@ -9,6 +9,7 @@ type Todo struct {
 	Text  string
 	Done  bool
 	owner *User
+	Sub   *Sub
 }
 
 func (t Todo) Owner() *User {

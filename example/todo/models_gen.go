@@ -8,6 +8,23 @@ import (
 	"strconv"
 )
 
+type More3 struct {
+	ID   int    `json:"id"`
+	Text string `json:"text"`
+}
+
+type Next2 struct {
+	ID   int    `json:"id"`
+	Text string `json:"text"`
+	More *More3 `json:"more"`
+}
+
+type Sub struct {
+	ID    int    `json:"id"`
+	Text  string `json:"text"`
+	Next2 *Next2 `json:"next2"`
+}
+
 // Passed to createTodo to create a new todo
 type TodoInput struct {
 	// The body text
@@ -16,6 +33,7 @@ type TodoInput struct {
 	Done *bool `json:"done"`
 }
 
+// Prevents access to a field if the user doesnt have the matching role
 type Role string
 
 const (

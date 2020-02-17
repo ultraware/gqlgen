@@ -3,6 +3,8 @@ package graphql
 import (
 	"context"
 	"time"
+
+	"github.com/vektah/gqlparser/ast"
 )
 
 type key string
@@ -26,6 +28,19 @@ type FieldContext struct {
 	Result interface{}
 	// IsMethod indicates if the resolver is a method
 	IsMethod bool
+
+	PreparedStore     map[*ast.Field]*FieldContext
+	PreparedListStore map[int]*FieldContext
+
+	PreparedFields []CollectedField
+	PreparedOut    *FieldSet
+
+	IsPreparing bool
+	IsPrepared  bool
+
+	MasterPrepare      bool
+	MasterPrepareCount int
+	MasterPrepareDone  bool
 }
 
 type FieldStats struct {
@@ -65,6 +80,26 @@ func GetResolverContext(ctx context.Context) *ResolverContext {
 
 func GetFieldContext(ctx context.Context) *FieldContext {
 	if val, ok := ctx.Value(resolverCtx).(*FieldContext); ok {
+		return val
+	}
+	return nil
+}
+
+func GetPreparedFieldContext(ctx context.Context) *FieldContext {
+	if val, ok := ctx.Value(resolverCtx).(*FieldContext); ok {
+		if val.PreparedStore == nil {
+			val.PreparedStore = map[*ast.Field]*FieldContext{}
+		}
+		return val
+	}
+	return nil
+}
+
+func GetPreparedFieldListContext(ctx context.Context) *FieldContext {
+	if val, ok := ctx.Value(resolverCtx).(*FieldContext); ok {
+		if val.PreparedListStore == nil {
+			val.PreparedListStore = map[int]*FieldContext{}
+		}
 		return val
 	}
 	return nil
