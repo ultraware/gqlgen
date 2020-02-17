@@ -13,6 +13,7 @@ and open http://localhost:8081 in your browser
 
 ## example query
 ```
+# Write your query or mutation here
 {
   todos{
     id
@@ -20,6 +21,12 @@ and open http://localhost:8081 in your browser
     done
     sub {
       text
+      next2 {
+        text
+        more{
+          text
+        }
+      }
     }
   }
   first: todo(id:1){
@@ -28,6 +35,12 @@ and open http://localhost:8081 in your browser
     done    
     sub {
       text
+      next2 {
+        text
+        more{
+          text
+        }
+      }
     }
   }
   second: todo(id:2){
@@ -36,7 +49,14 @@ and open http://localhost:8081 in your browser
     done    
     sub {
       text
+      next2 {
+        text
+        more{
+          text
+        }
+      }
     }
   }
+  
 }
 ```
