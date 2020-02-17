@@ -93,7 +93,7 @@ func (r *resolvers) Sub() SubResolver {
 type QueryResolver resolvers
 
 func (r *QueryResolver) Todo(ids []int) []*Todo {
-	fmt.Print(`DB.getTodos: `, ids, ` `)
+	fmt.Println(`DB.getTodos: `, ids, ` `)
 	time.Sleep(220 * time.Millisecond)
 
 	var result []*Todo
@@ -115,7 +115,7 @@ func (r *QueryResolver) Todo(ids []int) []*Todo {
 }
 
 func (r *QueryResolver) Todos() []*Todo {
-	fmt.Print(`DB.getAllTodos `)
+	fmt.Println(`DB.getAllTodos `)
 	time.Sleep(220 * time.Millisecond)
 	return r.todos
 }
@@ -125,6 +125,7 @@ func (r *QueryResolver) Sub(objs []*Todo) []*Sub {
 	for _, o := range objs {
 		fmt.Print(o.ID, `, `)
 	}
+	fmt.Println()
 	time.Sleep(110 * time.Millisecond)
 
 	results := []*Sub{}
@@ -149,6 +150,7 @@ func (r *QueryResolver) Next2(objs []*Sub) []*Next2 {
 	for _, o := range objs {
 		fmt.Print(o.ID, `, `)
 	}
+	fmt.Println()
 	time.Sleep(110 * time.Millisecond)
 
 	result := []*Next2{}
@@ -173,6 +175,7 @@ func (r *QueryResolver) More(objs []*Next2) []*More3 {
 	for _, o := range objs {
 		fmt.Print(o.ID, `, `)
 	}
+	fmt.Println()
 	time.Sleep(110 * time.Millisecond)
 
 	result := []*More3{}

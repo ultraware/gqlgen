@@ -255,72 +255,6 @@ type executableSchema struct {
 	resolvers  ResolverRoot
 	directives DirectiveRoot
 	complexity ComplexityRoot
-
-	todosCache TodosCache
-	todoCache  TodoCache
-	subCache   SubCache
-	nextCache  NextCache
-	moreCache  MoreCache
-}
-
-func (ec *executableSchema) Todos(ctx context.Context) ([]*Todo, error) {
-	fmt.Print(`get all Todos `)
-	result := ec.todosCache.getTodos(ctx, ec.resolvers.MyQuery().Todos)
-
-	if result != nil {
-		fmt.Println(` (fetch)`)
-		return result, nil
-	}
-	fmt.Println(`(prepared)`)
-	return nil, nil
-}
-
-func (ec *executableSchema) Todo(ctx context.Context, id int) (*Todo, error) {
-	fmt.Print(`get Todo: `, id, ` `)
-	result := ec.todoCache.getTodo(ctx, id, ec.resolvers.MyQuery().Todo)
-
-	if result != nil {
-		fmt.Println(` (fetch)`)
-		return result, nil
-	}
-	fmt.Println(`(prepared)`)
-	return nil, nil
-}
-
-func (ec *executableSchema) Sub(ctx context.Context, obj *Todo) (*Sub, error) {
-	fmt.Print(`get Sub of Todo: `, obj.ID, ` `)
-	result := ec.subCache.getSub(ctx, obj, ec.resolvers.Todo().Sub)
-
-	if result != nil {
-		fmt.Println(` (fetch)`)
-		return result, nil
-	}
-	fmt.Println(`(prepared)`)
-	return nil, nil
-}
-
-func (ec *executableSchema) More(ctx context.Context, obj *Next2) (*More3, error) {
-	fmt.Print(`get More of Next: `, obj.ID, ` `)
-	result := ec.moreCache.getMore(ctx, obj, ec.resolvers.Next2().More)
-
-	if result != nil {
-		fmt.Println(` (fetch)`)
-		return result, nil
-	}
-	fmt.Println(`(prepared)`)
-	return nil, nil
-}
-
-func (ec *executableSchema) Next2(ctx context.Context, obj *Sub) (*Next2, error) {
-	fmt.Print(`get Next of Sub: `, obj.ID, ` `)
-	result := ec.nextCache.getNext(ctx, obj, ec.resolvers.Sub().Next2)
-
-	if result != nil {
-		fmt.Println(` (fetch)`)
-		return result, nil
-	}
-	fmt.Println(`(prepared)`)
-	return nil, nil
 }
 
 func (e *executableSchema) Schema() *ast.Schema {
@@ -328,7 +262,7 @@ func (e *executableSchema) Schema() *ast.Schema {
 }
 
 func (e *executableSchema) Complexity(typeName, field string, childComplexity int, rawArgs map[string]interface{}) (int, bool) {
-	ec := executionContext{nil, e}
+	ec := executionContext{OperationContext: nil, executableSchema: e}
 	_ = ec
 	switch typeName + "." + field {
 
@@ -472,7 +406,7 @@ func (e *executableSchema) Complexity(typeName, field string, childComplexity in
 
 func (e *executableSchema) Exec(ctx context.Context) graphql.ResponseHandler {
 	rc := graphql.GetOperationContext(ctx)
-	ec := executionContext{rc, e}
+	ec := executionContext{OperationContext: rc, executableSchema: e}
 	first := true
 
 	switch rc.Operation.Operation {
@@ -513,6 +447,100 @@ func (e *executableSchema) Exec(ctx context.Context) graphql.ResponseHandler {
 type executionContext struct {
 	*graphql.OperationContext
 	*executableSchema
+
+	todosCache TodosCache
+	todoCache  TodoCache
+	subCache   SubCache
+	nextCache  NextCache
+	moreCache  MoreCache
+}
+
+func (ec *executionContext) loadPreparedItems() {
+	var wg sync.WaitGroup
+	wg.Add(5)
+
+	go func() {
+		defer wg.Done()
+		ec.todosCache.loadAllRequests()
+	}()
+	go func() {
+		defer wg.Done()
+		ec.todoCache.loadAllRequests()
+	}()
+	go func() {
+		defer wg.Done()
+		ec.subCache.loadAllRequests()
+	}()
+	go func() {
+		defer wg.Done()
+		ec.nextCache.loadAllRequests()
+	}()
+	go func() {
+		defer wg.Done()
+		ec.moreCache.loadAllRequests()
+	}()
+
+	wg.Wait()
+}
+
+func (ec *executionContext) Todos(ctx context.Context) ([]*Todo, error) {
+	fmt.Print(`get all Todos `)
+	result := ec.todosCache.getTodos(ctx, ec.resolvers.MyQuery().Todos)
+
+	if result != nil {
+		fmt.Println(` (fetch)`)
+		return result, nil
+	}
+	fmt.Println(`(prepared)`)
+	return nil, nil
+}
+
+func (ec *executionContext) Todo(ctx context.Context, id int) (*Todo, error) {
+	fmt.Print(`get Todo: `, id, ` `)
+	result := ec.todoCache.getTodo(ctx, id, ec.resolvers.MyQuery().Todo)
+
+	if result != nil {
+		fmt.Println(` (fetch)`)
+		return result, nil
+	}
+	fmt.Println(`(prepared)`)
+	return nil, nil
+}
+
+func (ec *executionContext) Sub(ctx context.Context, obj *Todo) (*Sub, error) {
+	fmt.Print(`get Sub of Todo: `, obj.ID, ` `)
+	result := ec.subCache.getSub(ctx, obj, ec.resolvers.Todo().Sub)
+
+	if result != nil {
+		fmt.Println(` (fetch)`)
+		return result, nil
+	}
+	fmt.Println(`(prepared)`)
+	return nil, nil
+}
+
+func (ec *executionContext) More(ctx context.Context, obj *Next2) (*More3, error) {
+	fmt.Print(`get More of Next: `, obj.ID, ` `)
+	result := ec.moreCache.getMore(ctx, obj, ec.resolvers.Next2().More)
+
+	if result != nil {
+		fmt.Println(` (fetch)`)
+		return result, nil
+	}
+	fmt.Println(`(prepared)`)
+	return nil, nil
+}
+
+func (ec *executionContext) Next2(ctx context.Context, obj *Sub) (*Next2, error) {
+	fmt.Print(`get Next of Sub: `, obj.ID, ` `)
+	result := ec.nextCache.getNext(ctx, obj, ec.resolvers.Sub().Next2)
+
+	if result != nil {
+		fmt.Println(` (fetch)`)
+		return result, nil
+	}
+	fmt.Println(`(prepared)`)
+	return nil, nil
 }
 
 func (ec *executionContext) introspectSchema() (*introspection.Schema, error) {
@@ -2641,6 +2669,7 @@ func (ec *executionContext) _MyQuery(ctx context.Context, sel ast.SelectionSet) 
 		if fctx.MasterPrepareCount == 0 {
 			break
 		}
+		ec.loadPreparedItems()
 	}
 	fctx.MasterPrepare = false
 	if invalids > 0 {
